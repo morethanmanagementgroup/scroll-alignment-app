@@ -1,11 +1,12 @@
 'use client'
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { storage } from '@/lib/storage'
 
 type Status = 'verifying' | 'success' | 'error'
 
-export default function SuccessPage() {
+// useSearchParams() must live inside a component wrapped by <Suspense>
+function SuccessContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [status, setStatus] = useState<Status>('verifying')
@@ -33,7 +34,6 @@ export default function SuccessPage() {
           }
           setPlan(data.plan || 'reading')
           setStatus('success')
-          // Redirect to the full report after a brief celebration moment
           setTimeout(() => router.push('/report'), 2500)
         } else {
           setStatus('error')
@@ -83,5 +83,22 @@ export default function SuccessPage() {
         </div>
       )}
     </div>
+  )
+}
+
+const VerifyingFallback = (
+  <div className="bg-scroll-black min-h-screen flex items-center justify-center px-6">
+    <div className="text-center animate-pulse">
+      <p className="font-serif text-scroll-gold text-2xl mb-3">Verifying your scroll access.</p>
+      <p className="text-scroll-bone-dim text-sm">This takes just a moment.</p>
+    </div>
+  </div>
+)
+
+export default function SuccessPage() {
+  return (
+    <Suspense fallback={VerifyingFallback}>
+      <SuccessContent />
+    </Suspense>
   )
 }
