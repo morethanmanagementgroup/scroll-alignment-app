@@ -12,48 +12,66 @@ export async function POST(req: NextRequest) {
     }
 
     const isAnnual = plan === 'annual'
+    const metadata = { userId: userId || '', plan, email }
+    const success_url = `${APP_URL}/success?session_id={CHECKOUT_SESSION_ID}`
+    const cancel_url = `${APP_URL}/unlock`
 
-    const session = await stripe.checkout.sessions.create({
-      payment_method_types: ['card'],
-      customer_email: email,
-      mode: isAnnual ? 'subscription' : 'payment',
-      allow_promotion_codes: true,
-      billing_address_collection: 'auto',
-      line_items: [
-        {
-          price_data: isAnnual
-            ? {
-                currency: 'usd',
-                product_data: {
-                  name: 'Scroll Alignment — Annual Access',
-                  description:
-                    'Full reading + daily scrolls, all focus areas, shadow work, saved history. Renews yearly.',
-                  images: [],
-                },
-                unit_amount: 3300, // $33.00
-                recurring: { interval: 'year' },
-              }
-            : {
-                currency: 'usd',
-                product_data: {
-                  name: 'Scroll Alignment — Full Reading',
-                  description:
-                    '18-section personalized reading built from your birth code and current season.',
-                  images: [],
-                },
-                unit_amount: 333, // $3.33
+    let session
+
+    if (isAnnual) {
+      // Subscription mode — price_data must include recurring
+      session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        customer_email: email,
+        mode: 'subscription',
+        allow_promotion_codes: true,
+        billing_address_collection: 'auto',
+        line_items: [
+          {
+            price_data: {
+              currency: 'usd',
+              product_data: {
+                name: 'Scroll Alignment — Annual Access',
+                description:
+                  'Full reading + daily scrolls, all focus areas, shadow work, saved history. Renews yearly.',
               },
-          quantity: 1,
-        },
-      ],
-      metadata: {
-        userId: userId || '',
-        plan,
-        email,
-      },
-      success_url: `${APP_URL}/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${APP_URL}/unlock`,
-    })
+              unit_amount: 3300,
+              recurring: { interval: 'year' },
+            },
+            quantity: 1,
+          },
+        ],
+        metadata,
+        success_url,
+        cancel_url,
+      })
+    } else {
+      // One-time payment mode
+      session = await stripe.checkout.sessions.create({
+        payment_method_types: ['card'],
+        customer_email: email,
+        mode: 'payment',
+        allow_promotion_codes: true,
+        billing_address_collection: 'auto',
+        line_items: [
+          {
+            price_data: {
+              currency: 'usd',
+              product_data: {
+                name: 'Scroll Alignment — Full Reading',
+                description:
+                  '18-section personalized reading built from your birth code and current season.',
+              },
+              unit_amount: 333,
+            },
+            quantity: 1,
+          },
+        ],
+        metadata,
+        success_url,
+        cancel_url,
+      })
+    }
 
     return NextResponse.json({ url: session.url })
   } catch (err: unknown) {
