@@ -155,7 +155,7 @@ export default function AdminPage() {
     { key: 'shadowOfDay',        label: 'Shadow of the Day',         placeholder: 'The collective blind spot or fear to watch for' },
     { key: 'powerMove',          label: 'Power Move',                placeholder: 'The one action that shifts everything today' },
     { key: 'suggestedFrequency', label: 'Suggested Frequency',       placeholder: 'e.g. 528 Hz — transformation and DNA repair' },
-    { key: 'journalPrompt',      label: 'Journal Prompt',            placeholder: 'The question that opens the day's reflection' },
+    { key: 'journalPrompt',      label: 'Journal Prompt',            placeholder: "The question that opens the day's reflection" },
     { key: 'eveningReflection',  label: 'Evening Reflection',        placeholder: 'Close the day. What should they sit with tonight?' },
   ]
 
