@@ -11,6 +11,8 @@ export type FocusArea =
 export type GenerationMode = 'template' | 'admin-curated' | 'ai'
 
 // ─── Core User ────────────────────────────────────────────────
+export type UserPlan = 'free' | 'reading' | 'annual'
+
 export interface User {
   id: string
   firstName: string
@@ -26,6 +28,8 @@ export interface User {
   chineseZodiac: string
   chineseElement: string
   isPaid: boolean
+  plan: UserPlan             // 'free' | 'reading' | 'annual'
+  stripeSessionId?: string   // last Stripe checkout session ID
   createdAt: string          // ISO 8601
 }
 

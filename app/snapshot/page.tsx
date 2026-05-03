@@ -113,14 +113,16 @@ export default function SnapshotPage() {
         {/* ── LOCKED SECTION ── */}
         <div className="relative animate-slide-up">
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-scroll-black/80 backdrop-blur-sm rounded-xl border border-scroll-gold/20 p-8 text-center">
-            <p className="text-scroll-gold text-2xl mb-2">🔒</p>
-            <h2 className="font-serif text-2xl mb-3 text-scroll-gold">Your Full Scroll Alignment is waiting.</h2>
-            <p className="text-scroll-bone-dim text-sm mb-6 max-w-xs">
-              18 sections of your complete birth code — patterns, practices, and your 30-day alignment plan.
+            <p className="text-scroll-gold text-2xl mb-2">✦</p>
+            <h2 className="font-serif text-2xl mb-2 text-scroll-gold">Your Full Scroll is waiting.</h2>
+            <p className="text-scroll-bone-dim text-sm mb-1">
+              18 sections built from your birth code and current season.
             </p>
+            <p className="text-scroll-gold/60 text-xs mb-6">Starting at <span className="text-scroll-gold font-semibold">$3.33</span></p>
             <Link href="/unlock">
-              <Button variant="gold" size="lg">Unlock Full Scroll — $33</Button>
+              <Button variant="gold" size="lg">See Plans</Button>
             </Link>
+            <p className="text-scroll-bone-dim/40 text-xs mt-3">Apple Pay · Card · $3.33 or $33/yr</p>
           </div>
 
           {/* Blurred preview */}

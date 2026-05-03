@@ -66,6 +66,7 @@ export default function OnboardingPage() {
       chineseZodiac,
       chineseElement,
       isPaid: false,
+      plan: 'free',
       createdAt: new Date().toISOString(),
     }
     storage.saveUser(user)
