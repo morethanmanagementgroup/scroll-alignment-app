@@ -20,15 +20,15 @@ export async function saveToCloud(userId: string): Promise<void> {
       {
         id: userId,
         email: user?.email ?? '',
-        profile: user,
-        snapshot,
-        report,
-        journals,
+        profile: user as unknown,
+        snapshot: snapshot as unknown,
+        report: report as unknown,
+        journals: journals as unknown,
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'id' }
     )
-  } catch {
+  } catch (_e) {
     // Never block the UI — silently fail
   }
 }
@@ -44,28 +44,31 @@ export async function restoreFromCloud(userId: string): Promise<boolean> {
 
     if (error || !data) return false
 
-    if (data.profile) storage.saveUser(data.profile)
-    if (data.snapshot) storage.saveSnapshot(data.snapshot)
-    if (data.report) storage.saveFullReport(data.report)
+    // Cast to any for flexible property access (no typed schema)
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const row = data as any
 
-    if (Array.isArray(data.journals)) {
-      ;(data.journals as JournalEntry[]).forEach(j => storage.saveJournalEntry(j))
+    if (row.profile) storage.saveUser(row.profile)
+    if (row.snapshot) storage.saveSnapshot(row.snapshot)
+    if (row.report) storage.saveFullReport(row.report)
+
+    if (Array.isArray(row.journals)) {
+      const journals = row.journals as JournalEntry[]
+      journals.forEach(j => storage.saveJournalEntry(j))
     }
 
-    if (data.daily_scrolls && typeof data.daily_scrolls === 'object') {
-      Object.values(data.daily_scrolls as Record<string, DailyScroll>).forEach(s =>
-        storage.saveDailyScroll(s)
-      )
+    if (row.daily_scrolls && typeof row.daily_scrolls === 'object') {
+      const scrolls = row.daily_scrolls as Record<string, DailyScroll>
+      Object.values(scrolls).forEach(s => storage.saveDailyScroll(s))
     }
 
-    if (data.routines && typeof data.routines === 'object') {
-      Object.values(data.routines as Record<string, Routine>).forEach(r =>
-        storage.saveRoutine(r)
-      )
+    if (row.routines && typeof row.routines === 'object') {
+      const routines = row.routines as Record<string, Routine>
+      Object.values(routines).forEach(r => storage.saveRoutine(r))
     }
 
     return true
-  } catch {
+  } catch (_e) {
     return false
   }
 }
@@ -85,12 +88,12 @@ export async function syncPaymentToCloud(
       {
         id: userId,
         email: updatedUser.email,
-        profile: updatedUser,
+        profile: updatedUser as unknown,
         updated_at: new Date().toISOString(),
       },
       { onConflict: 'id' }
     )
-  } catch {
+  } catch (_e) {
     // Silent fail
   }
 }
