@@ -278,9 +278,9 @@ export default function SettingsPage() {
               </Card>
 
               <Card variant="dark">
-                <p className="text-scroll-bone text-sm font-medium mb-1">Storage</p>
-                <p className="text-scroll-bone-dim/60 text-xs mb-1">Your data is stored locally in your browser. It will persist until you clear browser data or reset below.</p>
-                <p className="text-scroll-bone-dim/40 text-xs">Future version: Cloud sync with automatic backup.</p>
+                <p className="text-scroll-bone text-sm font-medium mb-1">Cloud Sync</p>
+                <p className="text-scroll-bone-dim/60 text-xs mb-1">Your Scroll is saved to the cloud. Sign in on any device to restore your data.</p>
+                <p className="text-scroll-bone-dim/40 text-xs">Powered by Supabase. Data syncs automatically.</p>
               </Card>
 
               <Card variant="dark" className="border-red-900/30">

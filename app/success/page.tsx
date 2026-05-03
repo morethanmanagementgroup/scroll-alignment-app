@@ -2,10 +2,10 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { storage } from '@/lib/storage'
+import { getCloudUserId, syncPaymentToCloud } from '@/lib/supabaseSync'
 
 type Status = 'verifying' | 'success' | 'error'
 
-// useSearchParams() must live inside a component wrapped by <Suspense>
 function SuccessContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -21,18 +21,27 @@ function SuccessContent() {
 
     fetch(`/api/verify-payment?session_id=${sessionId}`)
       .then(r => r.json())
-      .then(data => {
+      .then(async data => {
         if (data.paid) {
           const user = storage.getUser()
+          const resolvedPlan = data.plan || 'reading'
+
           if (user) {
             storage.saveUser({
               ...user,
               isPaid: true,
-              plan: data.plan || 'reading',
+              plan: resolvedPlan,
               stripeSessionId: sessionId,
             })
           }
-          setPlan(data.plan || 'reading')
+
+          // Sync payment status to Supabase (non-blocking)
+          const cloudUserId = await getCloudUserId()
+          if (cloudUserId) {
+            syncPaymentToCloud(cloudUserId, resolvedPlan, sessionId).catch(() => {})
+          }
+
+          setPlan(resolvedPlan)
           setStatus('success')
           setTimeout(() => router.push('/report'), 2500)
         } else {
@@ -72,7 +81,7 @@ function SuccessContent() {
             <a href="mailto:morethanmanagementgroup@gmail.com" className="text-scroll-gold underline">
               morethanmanagementgroup@gmail.com
             </a>{' '}
-            and we'll sort it out immediately.
+            and we&apos;ll sort it out immediately.
           </p>
           <button
             onClick={() => router.push('/unlock')}

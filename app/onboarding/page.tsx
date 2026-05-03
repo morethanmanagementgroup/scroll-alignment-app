@@ -5,6 +5,8 @@ import Header from '@/components/layout/Header'
 import Button from '@/components/ui/Button'
 import { storage, generateId } from '@/lib/storage'
 import { enrichUserProfile } from '@/lib/scrollEngine'
+import { supabase } from '@/lib/supabase'
+import { saveToCloud } from '@/lib/supabaseSync'
 import type { User, FocusArea } from '@/lib/types'
 
 const FOCUS_OPTIONS: FocusArea[] = [
@@ -19,8 +21,10 @@ export default function OnboardingPage() {
   const router = useRouter()
   const [step, setStep] = useState(0)
   const [loading, setLoading] = useState(false)
+  const [authError, setAuthError] = useState('')
   const [form, setForm] = useState({
-    firstName: '', email: '', birthDate: '', birthTime: '',
+    firstName: '', email: '', password: '',
+    birthDate: '', birthTime: '',
     birthCity: '', birthRegion: '', birthCountry: 'United States',
     currentFocus: 'Purpose' as FocusArea,
     currentIntention: '',
@@ -29,7 +33,6 @@ export default function OnboardingPage() {
   const update = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
   const handleNext = async () => {
-    // Capture lead email as soon as Step 1 (name + email) is completed
     if (step === 0 && form.firstName && form.email) {
       captureLeadEmail(form.firstName, form.email)
     }
@@ -43,25 +46,63 @@ export default function OnboardingPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          firstName,
-          email,
+          firstName, email,
           source: 'Scroll Alignment Onboarding',
           step: 'Email Captured — Not Yet Paid',
           timestamp: new Date().toISOString(),
           url: typeof window !== 'undefined' ? window.location.href : '',
         }),
       })
-    } catch {
-      // Silently fail — never block the user's flow
-    }
+    } catch {}
   }
 
   const handleSubmit = async () => {
     setLoading(true)
+    setAuthError('')
+
     const { lifePathNumber, chineseZodiac, chineseElement } = enrichUserProfile({ birthDate: form.birthDate })
+
+    // Try to create Supabase auth account
+    let supabaseUserId: string | null = null
+
+    if (form.password.length >= 6) {
+      // Attempt sign up
+      const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
+        email: form.email,
+        password: form.password,
+        options: { data: { firstName: form.firstName } },
+      })
+
+      if (signUpErr) {
+        // Email already in use — try signing in instead
+        const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
+          email: form.email,
+          password: form.password,
+        })
+
+        if (signInErr) {
+          // Wrong password for existing account
+          setAuthError('An account with this email already exists. Please use a different email or go to Sign In.')
+          setLoading(false)
+          return
+        }
+        supabaseUserId = signInData.user?.id ?? null
+      } else {
+        supabaseUserId = signUpData.user?.id ?? null
+      }
+    }
+
     const user: User = {
-      id: generateId(),
-      ...form,
+      id: supabaseUserId ?? generateId(),
+      firstName: form.firstName,
+      email: form.email,
+      birthDate: form.birthDate,
+      birthTime: form.birthTime || undefined,
+      birthCity: form.birthCity,
+      birthRegion: form.birthRegion,
+      birthCountry: form.birthCountry,
+      currentFocus: form.currentFocus,
+      currentIntention: form.currentIntention,
       lifePathNumber,
       chineseZodiac,
       chineseElement,
@@ -69,12 +110,19 @@ export default function OnboardingPage() {
       plan: 'free',
       createdAt: new Date().toISOString(),
     }
+
     storage.saveUser(user)
+
+    // Background sync to Supabase (non-blocking)
+    if (supabaseUserId) {
+      saveToCloud(supabaseUserId).catch(() => {})
+    }
+
     router.push('/snapshot')
   }
 
   const canNext = [
-    form.firstName && form.email,
+    form.firstName && form.email && form.password.length >= 6,
     form.birthDate && form.birthCity && form.birthRegion,
     form.currentFocus && form.currentIntention.length > 3,
   ][step]
@@ -113,6 +161,21 @@ export default function OnboardingPage() {
                 <input type="email" className="scroll-input" placeholder="you@example.com" value={form.email}
                   onChange={e => update('email', e.target.value)} />
               </Field>
+              <Field label="Create a Password" hint="Min. 6 characters — saves your Scroll to any device" required>
+                <input type="password" className="scroll-input" placeholder="Create a password (min. 6 characters)" value={form.password}
+                  onChange={e => update('password', e.target.value)} />
+              </Field>
+
+              {authError && (
+                <p className="text-red-400/80 text-sm bg-red-900/10 border border-red-900/30 rounded-lg px-4 py-3">
+                  {authError}
+                </p>
+              )}
+
+              <p className="text-scroll-bone-dim/40 text-xs">
+                Already have a Scroll?{' '}
+                <a href="/signin" className="text-scroll-gold/60 hover:text-scroll-gold underline">Sign in here</a>
+              </p>
             </div>
           )}
 

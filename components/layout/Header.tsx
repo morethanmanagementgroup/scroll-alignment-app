@@ -1,6 +1,8 @@
 'use client'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
+import { storage } from '@/lib/storage'
 
 interface HeaderProps {
   isPaid?: boolean
@@ -8,7 +10,14 @@ interface HeaderProps {
 
 export default function Header({ isPaid = false }: HeaderProps) {
   const pathname = usePathname()
+  const router = useRouter()
   const isLanding = pathname === '/'
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    storage.clearAll()
+    router.push('/')
+  }
 
   if (isLanding) {
     return (
@@ -18,7 +27,7 @@ export default function Header({ isPaid = false }: HeaderProps) {
             SCROLL
           </Link>
           <div className="flex items-center gap-4">
-            <Link href="/onboarding" className="text-scroll-bone-dim text-sm hover:text-scroll-bone transition-colors">
+            <Link href="/signin" className="text-scroll-bone-dim text-sm hover:text-scroll-bone transition-colors">
               Sign In
             </Link>
             <Link
@@ -48,12 +57,24 @@ export default function Header({ isPaid = false }: HeaderProps) {
               <NavLink href="/calendar" label="Calendar" current={pathname} />
               <NavLink href="/library" label="Library" current={pathname} />
               <NavLink href="/settings" label="Settings" current={pathname} />
+              <button
+                onClick={handleSignOut}
+                className="text-scroll-bone-dim/50 hover:text-scroll-bone-dim transition-colors text-sm"
+              >
+                Sign Out
+              </button>
             </>
           ) : (
             <>
               <NavLink href="/snapshot" label="My Snapshot" current={pathname} />
               <NavLink href="/unlock" label="Unlock Full Scroll" current={pathname} />
               <NavLink href="/settings" label="Settings" current={pathname} />
+              <button
+                onClick={handleSignOut}
+                className="text-scroll-bone-dim/50 hover:text-scroll-bone-dim transition-colors text-sm"
+              >
+                Sign Out
+              </button>
             </>
           )}
         </nav>
