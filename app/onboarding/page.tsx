@@ -28,9 +28,32 @@ export default function OnboardingPage() {
 
   const update = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
 
-  const handleNext = () => {
+  const handleNext = async () => {
+    // Capture lead email as soon as Step 1 (name + email) is completed
+    if (step === 0 && form.firstName && form.email) {
+      captureLeadEmail(form.firstName, form.email)
+    }
     if (step < STEPS.length - 1) setStep(s => s + 1)
     else handleSubmit()
+  }
+
+  const captureLeadEmail = async (firstName: string, email: string) => {
+    try {
+      await fetch('/api/capture-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName,
+          email,
+          source: 'Scroll Alignment Onboarding',
+          step: 'Email Captured — Not Yet Paid',
+          timestamp: new Date().toISOString(),
+          url: typeof window !== 'undefined' ? window.location.href : '',
+        }),
+      })
+    } catch {
+      // Silently fail — never block the user's flow
+    }
   }
 
   const handleSubmit = async () => {
