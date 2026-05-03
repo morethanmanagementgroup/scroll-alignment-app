@@ -1,0 +1,101 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --gold: #C9A96E;
+  --gold-light: #E2C98A;
+  --bone: #F0EBE1;
+  --ink: #080810;
+  --charcoal: #12121F;
+  --card: #161624;
+  --border: #232338;
+  --purple: #6B4E8A;
+  --purple-dim: #3D2D52;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  background-color: #080810;
+  color: #F0EBE1;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: #080810; }
+::-webkit-scrollbar-thumb { background: #232338; border-radius: 2px; }
+::-webkit-scrollbar-thumb:hover { background: #C9A96E; }
+
+/* Gold gradient text utility */
+.gold-text {
+  background: linear-gradient(135deg, #C9A96E 0%, #E2C98A 50%, #C9A96E 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Glow effects */
+.gold-glow {
+  box-shadow: 0 0 20px rgba(201, 169, 110, 0.3),
+              0 0 40px rgba(201, 169, 110, 0.1);
+}
+
+.gold-border-glow {
+  border: 1px solid rgba(201, 169, 110, 0.4);
+  box-shadow: 0 0 15px rgba(201, 169, 110, 0.1);
+}
+
+/* Card base */
+.scroll-card {
+  background: #161624;
+  border: 1px solid #232338;
+  border-radius: 12px;
+}
+
+.scroll-card-gold {
+  background: linear-gradient(135deg, #161624 0%, #1A1730 100%);
+  border: 1px solid rgba(201, 169, 110, 0.3);
+  border-radius: 12px;
+}
+
+/* Section divider */
+.scroll-divider {
+  border-top: 1px solid #232338;
+  margin: 2rem 0;
+}
+
+/* Locked overlay */
+.locked-blur {
+  filter: blur(4px);
+  pointer-events: none;
+  user-select: none;
+}
+
+/* Shimmer animation */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(90deg, transparent 25%, rgba(201,169,110,0.1) 50%, transparent 75%);
+  background-size: 200% 100%;
+  animation: shimmer 2s infinite;
+}
+
+/* Floating orb effect */
+.orb {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.15;
+  pointer-events: none;
+}
+
+.orb-gold { background: radial-gradient(circle, #C9A96E, transparent); }
+.orb-purple { background: radial-gradient(circle, #6B4E8A, transparent); }
+.orb-blue { background: radial-gradient(circle, #1C2E5A, transparent); }
