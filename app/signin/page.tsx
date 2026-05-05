@@ -56,7 +56,7 @@ function SignInContent() {
     setError('')
 
     const { error: err } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/signin`,
+      redirectTo: `${typeof window !== 'undefined' ? window.location.origin : ''}/reset-password`,
     })
 
     if (err) setError(err.message)
