@@ -6,9 +6,10 @@ const NAV_PAID = [
   { href: '/dashboard', label: 'Daily Scroll', icon: '◈' },
   { href: '/journal',   label: 'Journal',      icon: '✦' },
   { href: '/routine',   label: 'Routine',      icon: '○' },
+  { href: '/streak',    label: 'Streak',       icon: '◆' },
   { href: '/calendar',  label: 'Calendar',     icon: '◇' },
   { href: '/library',   label: 'Library',      icon: '◉' },
-  { href: '/report',    label: 'Full Report',  icon: '◆' },
+  { href: '/report',    label: 'Full Report',  icon: '▣' },
   { href: '/settings',  label: 'Settings',     icon: '⌘' },
 ]
 

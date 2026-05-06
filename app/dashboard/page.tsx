@@ -5,6 +5,8 @@ import Header from '@/components/layout/Header'
 import Sidebar from '@/components/layout/Sidebar'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
+import StreakTracker from '@/components/ui/StreakTracker'
+import ShareableScrollCard from '@/components/ui/ShareableScrollCard'
 import { storage, getTodayString, formatDate } from '@/lib/storage'
 import { generateDailyScroll } from '@/lib/scrollEngine'
 import type { User, DailyScroll } from '@/lib/types'
@@ -132,41 +134,51 @@ export default function DashboardPage() {
             <p className="text-scroll-bone-dim text-sm leading-relaxed">{scroll.eveningReflection}</p>
           </Card>
 
-          {/* Completion Checklist */}
-          <div className="scroll-card p-6 animate-slide-up">
-            <p className="text-scroll-gold/60 text-xs tracking-widest uppercase mb-4">Today's Completion</p>
-            <div className="space-y-3">
-              {[
-                { key: 'morning', label: 'Morning Routine', link: '/routine' },
-                { key: 'main',    label: 'Main Action Completed', link: null },
-                { key: 'journal', label: 'Journal Entry', link: '/journal' },
-                { key: 'evening', label: 'Evening Reflection', link: '/routine' },
-              ].map(item => (
-                <div key={item.key} className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => {
-                        if (item.key === 'main') {
-                          setCompletions(c => ({ ...c, main: !c.main }))
-                        }
-                      }}
-                      className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
-                        completions[item.key as keyof typeof completions]
-                          ? 'bg-scroll-gold border-scroll-gold text-scroll-black'
-                          : 'border-scroll-border'
-                      }`}
-                    >
-                      {completions[item.key as keyof typeof completions] && '✓'}
-                    </button>
-                    <span className="text-scroll-bone-dim text-sm">{item.label}</span>
+          {/* Completion Checklist + Share — side by side on md+ */}
+          <div className="grid md:grid-cols-2 gap-4 animate-slide-up">
+            <div className="scroll-card p-6">
+              <p className="text-scroll-gold/60 text-xs tracking-widest uppercase mb-4">Today's Completion</p>
+              <div className="space-y-3">
+                {[
+                  { key: 'morning', label: 'Morning Routine', link: '/routine' },
+                  { key: 'main',    label: 'Main Action Completed', link: null },
+                  { key: 'journal', label: 'Journal Entry', link: '/journal' },
+                  { key: 'evening', label: 'Evening Reflection', link: '/routine' },
+                ].map(item => (
+                  <div key={item.key} className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <button
+                        onClick={() => {
+                          if (item.key === 'main') {
+                            setCompletions(c => ({ ...c, main: !c.main }))
+                          }
+                        }}
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-all ${
+                          completions[item.key as keyof typeof completions]
+                            ? 'bg-scroll-gold border-scroll-gold text-scroll-black'
+                            : 'border-scroll-border'
+                        }`}
+                      >
+                        {completions[item.key as keyof typeof completions] && '✓'}
+                      </button>
+                      <span className="text-scroll-bone-dim text-sm">{item.label}</span>
+                    </div>
+                    {item.link && (
+                      <button onClick={() => router.push(item.link!)}
+                        className="text-scroll-gold/60 text-xs hover:text-scroll-gold">→</button>
+                    )}
                   </div>
-                  {item.link && (
-                    <button onClick={() => router.push(item.link!)}
-                      className="text-scroll-gold/60 text-xs hover:text-scroll-gold">→</button>
-                  )}
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
+
+            {/* Shareable Card */}
+            <ShareableScrollCard scroll={scroll} user={user} />
+          </div>
+
+          {/* Streak Tracker */}
+          <div className="mt-4 mb-10 animate-slide-up">
+            <StreakTracker />
           </div>
 
         </main>
