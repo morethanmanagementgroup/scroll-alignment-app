@@ -8,8 +8,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { buildDailyScrollEmail } from '@/lib/email/dailyScrollEmail'
-import { generateDailyScrollTemplate } from '@/lib/scrollEngine'
-import type { User, DailyScroll } from '@/lib/types'
+import { generateDailyScrollTemplate, generateDailyScrollAdminCurated } from '@/lib/scrollEngine'
+import type { User, DailyScroll, AdminDailyTheme } from '@/lib/types'
 
 // ─── Supabase admin client (service role — bypasses RLS) ─────
 function getAdminClient() {
@@ -73,6 +73,17 @@ export async function GET(req: NextRequest) {
   try {
     const supabase = getAdminClient()
 
+    // Check if admin has set a curated theme for today
+    let adminTheme: AdminDailyTheme | null = null
+    const { data: themeRow } = await supabase
+      .from('admin_themes')
+      .select('data')
+      .eq('date', today)
+      .single()
+    if (themeRow?.data) {
+      adminTheme = themeRow.data as AdminDailyTheme
+    }
+
     // Fetch all paid users who have opted into daily emails
     // profile JSONB contains the full User object including dailyEmail flag
     const { data: rows, error } = await supabase
@@ -105,8 +116,10 @@ export async function GET(req: NextRequest) {
         const toEmail = user.email || row.email
         if (!toEmail) { skipped++; continue }
 
-        // Generate today's scroll for this user
-        const scroll: DailyScroll = generateDailyScrollTemplate(user, today)
+        // Generate today's scroll — admin-curated if available, else template
+        const scroll: DailyScroll = adminTheme
+          ? generateDailyScrollAdminCurated(user, today, adminTheme)
+          : generateDailyScrollTemplate(user, today)
 
         // Build the HTML email
         const html = buildDailyScrollEmail(user, scroll, appUrl)
