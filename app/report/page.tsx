@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import Sidebar from '@/components/layout/Sidebar'
 import Card from '@/components/ui/Card'
-import { storage, formatDate } from '@/lib/storage'
+import { storage, formatDate, getTodayString } from '@/lib/storage'
 import { generateFullReport } from '@/lib/scrollEngine'
 import { getLifePathLabel } from '@/lib/numerology'
 import type { User, FullScrollReport } from '@/lib/types'
@@ -38,7 +38,7 @@ export default function ReportPage() {
           <div className="text-center mb-12 py-12 border-b border-scroll-border animate-fade-in">
             <p className="text-scroll-gold/60 tracking-widest text-xs uppercase mb-4">Full Scroll Alignment</p>
             <h1 className="font-serif text-5xl mb-2 gold-text">{user.firstName}'s Scroll</h1>
-            <p className="text-scroll-bone-dim">{formatDate(new Date().toISOString().split('T')[0])}</p>
+            <p className="text-scroll-bone-dim">{formatDate(getTodayString())}</p>
             <p className="text-scroll-gold/40 text-xs mt-4 tracking-widest">{report.birthCodeSummary}</p>
           </div>
 
