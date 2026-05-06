@@ -1,0 +1,19 @@
+{
+  "name": "Scroll Alignment",
+  "short_name": "Scroll",
+  "description": "Your birth code. Your current season. Your daily alignment.",
+  "start_url": "/dashboard",
+  "display": "standalone",
+  "background_color": "#080810",
+  "theme_color": "#080810",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "/scroll-mark.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["lifestyle", "health", "productivity"]
+}

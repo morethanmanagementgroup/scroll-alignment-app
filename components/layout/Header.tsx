@@ -3,6 +3,7 @@ import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import { storage } from '@/lib/storage'
+import MobileNav from './MobileNav'
 
 interface HeaderProps {
   isPaid?: boolean
@@ -26,7 +27,8 @@ export default function Header({ isPaid = false }: HeaderProps) {
           <Link href="/" className="font-serif text-xl gold-text tracking-widest">
             SCROLL
           </Link>
-          <div className="flex items-center gap-4">
+          {/* Desktop CTA */}
+          <div className="hidden sm:flex items-center gap-4">
             <Link href="/signin" className="text-scroll-bone-dim text-sm hover:text-scroll-bone transition-colors">
               Sign In
             </Link>
@@ -35,6 +37,18 @@ export default function Header({ isPaid = false }: HeaderProps) {
               className="bg-gold-gradient text-scroll-black px-5 py-2 rounded-lg text-sm font-semibold hover:opacity-90 transition-opacity"
             >
               Create My Scroll
+            </Link>
+          </div>
+          {/* Mobile CTA — just the button */}
+          <div className="flex sm:hidden items-center gap-3">
+            <Link href="/signin" className="text-scroll-bone-dim text-xs hover:text-scroll-bone transition-colors">
+              Sign In
+            </Link>
+            <Link
+              href="/onboarding"
+              className="bg-gold-gradient text-scroll-black px-4 py-1.5 rounded-lg text-xs font-semibold hover:opacity-90 transition-opacity"
+            >
+              Start
             </Link>
           </div>
         </div>
@@ -48,6 +62,8 @@ export default function Header({ isPaid = false }: HeaderProps) {
         <Link href={isPaid ? '/dashboard' : '/snapshot'} className="font-serif text-xl gold-text tracking-widest">
           SCROLL
         </Link>
+
+        {/* Desktop nav */}
         <nav className="hidden md:flex items-center gap-6 text-sm">
           {isPaid ? (
             <>
@@ -79,6 +95,9 @@ export default function Header({ isPaid = false }: HeaderProps) {
             </>
           )}
         </nav>
+
+        {/* Mobile hamburger — renders its own drawer */}
+        <MobileNav isPaid={isPaid} />
       </div>
     </header>
   )
