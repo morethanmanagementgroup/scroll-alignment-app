@@ -30,6 +30,7 @@ export interface User {
   isPaid: boolean
   plan: UserPlan             // 'free' | 'reading' | 'annual'
   stripeSessionId?: string   // last Stripe checkout session ID
+  dailyEmail?: boolean       // opt-in: receive daily scroll via email
   createdAt: string          // ISO 8601
 }
 

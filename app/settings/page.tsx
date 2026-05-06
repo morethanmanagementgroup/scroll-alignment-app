@@ -15,8 +15,10 @@ const FOCUS_AREAS = Object.keys(FOCUS_MESSAGES) as (keyof typeof FOCUS_MESSAGES)
 export default function SettingsPage() {
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
-  const [tab, setTab] = useState<'profile' | 'intention' | 'data'>('profile')
+  const [tab, setTab] = useState<'profile' | 'intention' | 'notifications' | 'data'>('profile')
   const [saved, setSaved] = useState(false)
+  const [emailSending, setEmailSending] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
   const [form, setForm] = useState({
     firstName: '',
     email: '',
@@ -27,6 +29,7 @@ export default function SettingsPage() {
     birthCountry: '',
     currentFocus: '' as keyof typeof FOCUS_MESSAGES | '',
     currentIntention: '',
+    dailyEmail: false,
   })
 
   useEffect(() => {
@@ -44,10 +47,12 @@ export default function SettingsPage() {
       birthCountry: u.birthCountry,
       currentFocus: u.currentFocus,
       currentIntention: u.currentIntention,
+      dailyEmail: u.dailyEmail ?? false,
     })
   }, [router])
 
-  const update = (k: string, v: string) => setForm(f => ({ ...f, [k]: v }))
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const update = (k: string, v: any) => setForm(f => ({ ...f, [k]: v }))
 
   const handleSave = () => {
     if (!user) return
@@ -62,6 +67,7 @@ export default function SettingsPage() {
       birthCountry: form.birthCountry,
       currentFocus: form.currentFocus as keyof typeof FOCUS_MESSAGES,
       currentIntention: form.currentIntention,
+      dailyEmail: form.dailyEmail,
       ...enrichUserProfile({
         ...user,
         birthDate: form.birthDate,
@@ -96,6 +102,28 @@ export default function SettingsPage() {
     router.push('/onboarding')
   }
 
+  const handleTestEmail = async () => {
+    if (!user) return
+    setEmailSending(true)
+    try {
+      const res = await fetch('/api/send-daily-scroll', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: user.id, testMode: true }),
+      })
+      if (res.ok) {
+        setEmailSent(true)
+        setTimeout(() => setEmailSent(false), 5000)
+      } else {
+        alert('Could not send test email. Check that your email preferences are saved.')
+      }
+    } catch {
+      alert('Error sending test email.')
+    } finally {
+      setEmailSending(false)
+    }
+  }
+
   if (!user) return null
 
   return (
@@ -119,10 +147,11 @@ export default function SettingsPage() {
           </div>
 
           {/* Tabs */}
-          <div className="flex gap-2 mb-8">
+          <div className="flex flex-wrap gap-2 mb-8">
             {[
               { key: 'profile', label: 'Profile' },
               { key: 'intention', label: 'Intention & Focus' },
+              { key: 'notifications', label: 'Notifications' },
               { key: 'data', label: 'Data' },
             ].map(t => (
               <button key={t.key} onClick={() => setTab(t.key as typeof tab)}
@@ -265,6 +294,61 @@ export default function SettingsPage() {
 
               <p className="text-scroll-bone-dim/40 text-xs text-center">
                 Updating your focus will influence your next Daily Scroll generation.
+              </p>
+            </div>
+          )}
+
+          {tab === 'notifications' && (
+            <div className="space-y-5 animate-fade-in">
+              <Card>
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-scroll-bone text-sm font-medium mb-1">Daily Scroll Email</p>
+                    <p className="text-scroll-bone-dim/60 text-xs leading-relaxed">
+                      Receive your personalized Daily Scroll in your inbox every morning at 7am Eastern. Includes your energy forecast, assignments, power move, and journal prompt.
+                    </p>
+                  </div>
+                  {/* Toggle switch */}
+                  <button
+                    onClick={() => update('dailyEmail', !form.dailyEmail)}
+                    className={`flex-shrink-0 relative w-12 h-6 rounded-full transition-colors ${
+                      form.dailyEmail ? 'bg-scroll-gold' : 'bg-scroll-border'
+                    }`}
+                    aria-label="Toggle daily email"
+                  >
+                    <span className={`absolute top-1 w-4 h-4 rounded-full bg-scroll-black transition-transform ${
+                      form.dailyEmail ? 'translate-x-7' : 'translate-x-1'
+                    }`} />
+                  </button>
+                </div>
+                {form.dailyEmail && (
+                  <div className="mt-4 pt-4 border-t border-scroll-border">
+                    <p className="text-scroll-bone-dim/50 text-xs mb-3">
+                      Sending to: <span className="text-scroll-gold">{form.email || user.email}</span>
+                    </p>
+                    <Button
+                      variant="ghost"
+                      onClick={handleTestEmail}
+                      disabled={emailSending || emailSent}
+                    >
+                      {emailSent ? '✓ Test Email Sent' : emailSending ? 'Sending…' : 'Send Test Email Now'}
+                    </Button>
+                  </div>
+                )}
+              </Card>
+
+              <Card variant="dark">
+                <p className="text-scroll-bone-dim/50 text-xs uppercase tracking-wider mb-2">Delivery Schedule</p>
+                <p className="text-scroll-bone text-sm">7:00am Eastern · Every morning</p>
+                <p className="text-scroll-bone-dim/40 text-xs mt-1">Your scroll is freshly generated each day based on your active codes.</p>
+              </Card>
+
+              <Button variant="gold" className="w-full" onClick={handleSave}>
+                {saved ? '✓ Preferences Saved' : 'Save Notification Settings'}
+              </Button>
+
+              <p className="text-scroll-bone-dim/40 text-xs text-center">
+                You can unsubscribe at any time by toggling this off and saving.
               </p>
             </div>
           )}
