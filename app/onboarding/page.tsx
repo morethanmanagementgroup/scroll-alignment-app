@@ -107,18 +107,29 @@ export default function OnboardingPage() {
       chineseZodiac,
       chineseElement,
       isPaid: false,
-      plan: 'free',
+      plan: 'free' as const,
       createdAt: new Date().toISOString(),
     }
 
-    storage.saveUser(user)
+    // Check for a pending payment (from success page before account existed)
+    let finalUser = user
+    const pendingRaw = localStorage.getItem('scroll_pending_payment')
+    if (pendingRaw) {
+      try {
+        const pending = JSON.parse(pendingRaw)
+        finalUser = { ...user, isPaid: true, plan: pending.plan || 'reading', stripeSessionId: pending.sessionId }
+        localStorage.removeItem('scroll_pending_payment')
+      } catch { /* ignore */ }
+    }
+
+    storage.saveUser(finalUser)
 
     // Background sync to Supabase (non-blocking)
     if (supabaseUserId) {
       saveToCloud(supabaseUserId).catch(() => {})
     }
 
-    router.push('/snapshot')
+    router.push(finalUser.isPaid ? '/report' : '/snapshot')
   }
 
   const canNext = [
