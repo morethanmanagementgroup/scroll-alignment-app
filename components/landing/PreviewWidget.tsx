@@ -2,14 +2,27 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-// ── Life path calculation ─────────────────────────────────────────
+// ── Life path calculation (matches numerology.ts exactly) ────────
+// Method: reduce month, day, and year SEPARATELY, then sum + reduce.
+// Master numbers (11, 22, 33) are preserved at every step.
+const MASTER = new Set([11, 22, 33])
+
+function reduceNum(n: number): number {
+  if (MASTER.has(n)) return n
+  if (n < 10) return n
+  const sum = String(n).split('').reduce((acc, d) => acc + parseInt(d), 0)
+  return reduceNum(sum)
+}
+
 function calcLifePath(dateStr: string): number {
-  const digits = dateStr.replace(/-/g, '').split('').map(Number)
-  let sum = digits.reduce((a, b) => a + b, 0)
-  while (sum > 9 && sum !== 11 && sum !== 22 && sum !== 33) {
-    sum = String(sum).split('').map(Number).reduce((a, b) => a + b, 0)
-  }
-  return sum
+  const [year, month, day] = dateStr.split('-').map(Number)
+  const reducedMonth = reduceNum(month)
+  const reducedDay   = reduceNum(day)
+  const yearDigitSum = String(year).split('').reduce((acc, d) => acc + parseInt(d), 0)
+  const reducedYear  = reduceNum(yearDigitSum)
+  const total = reducedMonth + reducedDay + reducedYear
+  if (MASTER.has(total)) return total
+  return reduceNum(total)
 }
 
 // ── Chinese zodiac ────────────────────────────────────────────────
