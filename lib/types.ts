@@ -116,7 +116,7 @@ export interface DailyScroll {
   generationMode: GenerationMode
 }
 
-// ─── Journal Entry ────────────────────────────────────────────
+// ─── Journal Entry (legacy flat format) ──────────────────────
 export interface JournalEntry {
   id: string
   userId: string
@@ -129,6 +129,20 @@ export interface JournalEntry {
   tomorrowIntention: string
   freeWrite: string
   createdAt: string
+}
+
+// ─── Daily Journal (three-session format) ────────────────────
+export interface JournalSession {
+  energyRating: number       // 1–5
+  response: string           // free-write response to the prompt
+  completedAt: string        // ISO timestamp
+}
+
+export interface DailyJournal {
+  date: string               // YYYY-MM-DD
+  morning?: JournalSession
+  afternoon?: JournalSession
+  evening?: JournalSession
 }
 
 // ─── Routine ──────────────────────────────────────────────────

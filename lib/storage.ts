@@ -7,17 +7,18 @@
 import type {
   User, ScrollSnapshot, FullScrollReport,
   DailyScroll, JournalEntry, Routine,
-  AdminDailyTheme, StorageAdapter,
+  AdminDailyTheme, StorageAdapter, DailyJournal,
 } from './types'
 
 const KEYS = {
-  user:       'sa_user',
-  snapshot:   'sa_snapshot',
-  report:     'sa_report',
-  dailys:     'sa_daily_scrolls',
-  journals:   'sa_journals',
-  routines:   'sa_routines',
-  adminThemes:'sa_admin_themes',
+  user:         'sa_user',
+  snapshot:     'sa_snapshot',
+  report:       'sa_report',
+  dailys:       'sa_daily_scrolls',
+  journals:     'sa_journals',
+  dailyJournal: 'sa_daily_journal',
+  routines:     'sa_routines',
+  adminThemes:  'sa_admin_themes',
 } as const
 
 function safeGet<T>(key: string): T | null {
@@ -67,6 +68,21 @@ export const storage: StorageAdapter = {
     if (idx >= 0) all[idx] = entry
     else all.unshift(entry)
     safeSet(KEYS.journals, all)
+  },
+
+  // Daily Journal (three-session format)
+  getDailyJournal: (date: string): DailyJournal | null => {
+    const all = safeGet<Record<string, DailyJournal>>(KEYS.dailyJournal) ?? {}
+    return all[date] ?? null
+  },
+  saveDailyJournal: (journal: DailyJournal): void => {
+    const all = safeGet<Record<string, DailyJournal>>(KEYS.dailyJournal) ?? {}
+    all[journal.date] = journal
+    safeSet(KEYS.dailyJournal, all)
+  },
+  getAllDailyJournals: (): DailyJournal[] => {
+    const all = safeGet<Record<string, DailyJournal>>(KEYS.dailyJournal) ?? {}
+    return Object.values(all).sort((a, b) => b.date.localeCompare(a.date))
   },
 
   // Routines

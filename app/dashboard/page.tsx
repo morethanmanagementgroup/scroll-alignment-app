@@ -9,13 +9,14 @@ import StreakTracker from '@/components/ui/StreakTracker'
 import ShareableScrollCard from '@/components/ui/ShareableScrollCard'
 import { storage, getTodayString, formatDate } from '@/lib/storage'
 import { generateDailyScroll } from '@/lib/scrollEngine'
-import type { User, DailyScroll } from '@/lib/types'
+import type { User, DailyScroll, DailyJournal } from '@/lib/types'
 
 export default function DashboardPage() {
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
   const [scroll, setScroll] = useState<DailyScroll | null>(null)
   const [completions, setCompletions] = useState({ morning: false, main: false, journal: false, evening: false })
+  const [todayJournal, setTodayJournal] = useState<DailyJournal | null>(null)
   const [loading, setLoading] = useState(true)
 
   const today = getTodayString()
@@ -36,9 +37,13 @@ export default function DashboardPage() {
     setCompletions({
       morning: !!storage.getRoutine(today)?.morningCompleted,
       main:    (ds.completionScore ?? 0) >= 50,
-      journal: !!storage.getJournalEntries().find(j => j.date === today),
+      journal: !!(storage as any).getDailyJournal(today),
       evening: !!storage.getRoutine(today)?.eveningCompleted,
     })
+    // Load today's three-session journal
+    const dj = (storage as any).getDailyJournal(today)
+    setTodayJournal(dj ?? null)
+
     setLoading(false)
   }, [router, today])
 
@@ -121,12 +126,46 @@ export default function DashboardPage() {
             </Card>
           </div>
 
-          {/* Journal Prompt */}
-          <Card variant="gold" className="mb-6 animate-slide-up">
-            <p className="text-scroll-gold/60 text-xs tracking-widest uppercase mb-3">Journal Prompt</p>
-            <p className="text-scroll-bone leading-relaxed mb-4">"{scroll.journalPrompt}"</p>
-            <Button variant="ghost" size="sm" onClick={() => router.push('/journal')}>Open Journal →</Button>
-          </Card>
+          {/* Today's Journal — three-session preview */}
+          <div className="scroll-card mb-6 animate-slide-up">
+            <div className="p-6 flex items-start justify-between">
+              <div className="flex-1">
+                <p className="text-scroll-gold/60 text-xs tracking-widest uppercase mb-3">Today&apos;s Journal</p>
+                <div className="flex gap-3">
+                  {(['morning', 'afternoon', 'evening'] as const).map((key, i) => {
+                    const icons = ['◈', '◉', '✦']
+                    const labels = ['Morning', 'Afternoon', 'Evening']
+                    const done = !!(todayJournal?.[key]?.completedAt)
+                    return (
+                      <div key={key} className="flex flex-col items-center gap-1.5">
+                        <div className={`w-9 h-9 rounded-full border flex items-center justify-center text-sm transition-all ${
+                          done
+                            ? 'border-scroll-gold/50 bg-scroll-gold/10 text-scroll-gold'
+                            : 'border-scroll-border text-scroll-bone-dim/40'
+                        }`}>
+                          {done ? '✓' : icons[i]}
+                        </div>
+                        <span className="text-scroll-bone-dim/40 text-xs">{labels[i]}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+              <button
+                onClick={() => router.push('/journal')}
+                className="text-scroll-gold/60 hover:text-scroll-gold text-xs tracking-widest uppercase transition-colors mt-1"
+              >
+                Open →
+              </button>
+            </div>
+            {scroll.journalPrompt && (
+              <div className="px-6 pb-5 border-t border-scroll-border/40 pt-4">
+                <p className="text-scroll-bone-dim/60 text-xs italic leading-relaxed">
+                  &ldquo;{scroll.journalPrompt}&rdquo;
+                </p>
+              </div>
+            )}
+          </div>
 
           {/* Evening Reflection */}
           <Card className="mb-10 animate-slide-up">
