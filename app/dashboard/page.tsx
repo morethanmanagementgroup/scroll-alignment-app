@@ -7,6 +7,7 @@ import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import StreakTracker from '@/components/ui/StreakTracker'
 import ShareableScrollCard from '@/components/ui/ShareableScrollCard'
+import ReferralWidget from '@/components/dashboard/ReferralWidget'
 import { storage, getTodayString, formatDate } from '@/lib/storage'
 import { generateDailyScroll } from '@/lib/scrollEngine'
 import type { User, DailyScroll, DailyJournal } from '@/lib/types'
@@ -216,9 +217,17 @@ export default function DashboardPage() {
           </div>
 
           {/* Streak Tracker */}
-          <div className="mt-4 mb-10 animate-slide-up">
+          <div className="mt-4 animate-slide-up">
             <StreakTracker />
           </div>
+
+          {/* Referral Widget */}
+          {user.referralCode && (
+            <div className="mt-6 mb-10 animate-slide-up">
+              <ReferralWidget user={user} />
+            </div>
+          )}
+          {!user.referralCode && <div className="mb-10" />}
 
         </main>
       </div>

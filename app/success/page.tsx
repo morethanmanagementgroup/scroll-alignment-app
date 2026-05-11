@@ -3,6 +3,7 @@ import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { storage } from '@/lib/storage'
 import { getCloudUserId, syncPaymentToCloud } from '@/lib/supabaseSync'
+import { getStoredReferralCode, clearReferralCode } from '@/lib/referral'
 
 type Status = 'verifying' | 'success' | 'need-onboarding' | 'error'
 
@@ -47,6 +48,18 @@ function SuccessContent() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ sessionId }),
         }).catch(() => {})
+
+        // 3b. Record referral if one was used
+        const referralCode = getStoredReferralCode()
+        if (referralCode) {
+          fetch('/api/record-referral', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sessionId, referralCode }),
+          })
+            .then(() => clearReferralCode())
+            .catch(() => {})
+        }
 
         // 4. Update localStorage user if they exist on this device
         const user = storage.getUser()

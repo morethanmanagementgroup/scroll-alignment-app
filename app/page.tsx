@@ -1,11 +1,14 @@
+import { Suspense } from 'react'
 import Link from 'next/link'
 import Header from '@/components/layout/Header'
 import PreviewWidget from '@/components/landing/PreviewWidget'
+import RefCapture from '@/components/landing/RefCapture'
 
 export default function LandingPage() {
   return (
     <div className="bg-scroll-black text-scroll-bone">
       <Header />
+      <Suspense fallback={null}><RefCapture /></Suspense>
 
       {/* ── HERO ─────────────────────────────────────────────────────── */}
       <section className="relative min-h-screen flex flex-col items-center justify-center px-6 pt-24 pb-16 overflow-hidden">

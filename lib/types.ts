@@ -31,6 +31,9 @@ export interface User {
   plan: UserPlan             // 'free' | 'reading' | 'annual'
   stripeSessionId?: string   // last Stripe checkout session ID
   dailyEmail?: boolean       // opt-in: receive daily scroll via email
+  referralCode?: string      // unique referral code (e.g. SCRX7K2P)
+  referralBalance?: number   // lifetime earnings in USD (e.g. 9.90)
+  referralCount?: number     // total successful referrals
   createdAt: string          // ISO 8601
 }
 

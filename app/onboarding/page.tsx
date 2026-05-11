@@ -7,6 +7,7 @@ import { storage, generateId } from '@/lib/storage'
 import { enrichUserProfile } from '@/lib/scrollEngine'
 import { supabase } from '@/lib/supabase'
 import { saveToCloud } from '@/lib/supabaseSync'
+import { generateReferralCode } from '@/lib/referral'
 import type { User, FocusArea } from '@/lib/types'
 
 const FOCUS_OPTIONS: FocusArea[] = [
@@ -108,6 +109,9 @@ export default function OnboardingPage() {
       chineseElement,
       isPaid: false,
       plan: 'free' as const,
+      referralCode: generateReferralCode(),
+      referralBalance: 0,
+      referralCount: 0,
       createdAt: new Date().toISOString(),
     }
 

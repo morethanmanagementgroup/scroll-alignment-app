@@ -2,29 +2,53 @@ import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 
 const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://scroll-alignment-app.vercel.app'
+const REFERRAL_COUPON_ID = 'SCROLL_REF_10'
+
+/** Ensure the 10% referral coupon exists in Stripe */
+async function ensureReferralCoupon() {
+  try {
+    await stripe.coupons.retrieve(REFERRAL_COUPON_ID)
+  } catch {
+    await stripe.coupons.create({
+      id: REFERRAL_COUPON_ID,
+      percent_off: 10,
+      duration: 'once',
+      name: 'Scroll Referral — 10% off',
+    })
+  }
+}
 
 export async function POST(req: NextRequest) {
   try {
-    const { email, userId, plan } = await req.json()
+    const { email, userId, plan, referralCode } = await req.json()
 
     if (!email || !plan) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
-    const isAnnual = plan === 'annual'
-    const metadata = { userId: userId || '', plan, email }
+    const isAnnual    = plan === 'annual'
+    const hasReferral = !!referralCode
+    const metadata    = { userId: userId || '', plan, email, referralCode: referralCode || '' }
     const success_url = `${APP_URL}/success?session_id={CHECKOUT_SESSION_ID}`
-    const cancel_url = `${APP_URL}/unlock`
+    const cancel_url  = `${APP_URL}/unlock`
+
+    // If referred, apply 10% coupon (mutually exclusive with allow_promotion_codes)
+    let discounts: { coupon: string }[] | undefined
+    let allowPromoCodes = true
+    if (hasReferral) {
+      await ensureReferralCoupon()
+      discounts = [{ coupon: REFERRAL_COUPON_ID }]
+      allowPromoCodes = false
+    }
 
     let session
 
     if (isAnnual) {
-      // Subscription mode — price_data must include recurring
       session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
         customer_email: email,
         mode: 'subscription',
-        allow_promotion_codes: true,
+        ...(allowPromoCodes ? { allow_promotion_codes: true } : { discounts }),
         billing_address_collection: 'auto',
         line_items: [
           {
@@ -46,12 +70,11 @@ export async function POST(req: NextRequest) {
         cancel_url,
       })
     } else {
-      // One-time payment mode
       session = await stripe.checkout.sessions.create({
         payment_method_types: ['card'],
         customer_email: email,
         mode: 'payment',
-        allow_promotion_codes: true,
+        ...(allowPromoCodes ? { allow_promotion_codes: true } : { discounts }),
         billing_address_collection: 'auto',
         line_items: [
           {

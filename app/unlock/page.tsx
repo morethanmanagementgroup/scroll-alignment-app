@@ -5,31 +5,37 @@ import Header from '@/components/layout/Header'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import { storage } from '@/lib/storage'
+import { getStoredReferralCode, clearReferralCode } from '@/lib/referral'
 import type { User } from '@/lib/types'
 
 export default function UnlockPage() {
   const router = useRouter()
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState<'reading' | 'annual' | null>(null)
+  const [referralCode, setReferralCode] = useState<string | null>(null)
 
   useEffect(() => {
     const u = storage.getUser()
     if (!u) { router.push('/onboarding'); return }
     if (u.isPaid) { router.push('/report'); return }
     setUser(u)
+    setReferralCode(getStoredReferralCode())
   }, [router])
 
   const handleCheckout = async (plan: 'reading' | 'annual') => {
     if (!user) return
     setLoading(plan)
+    const referralCode = getStoredReferralCode()
     try {
       const res = await fetch('/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: user.email, userId: user.id, plan }),
+        body: JSON.stringify({ email: user.email, userId: user.id, plan, referralCode: referralCode || undefined }),
       })
       const data = await res.json()
       if (data.url) {
+        // Clear referral code — it's been applied to this checkout
+        if (referralCode) clearReferralCode()
         window.location.href = data.url
       } else {
         alert('Something went wrong. Please try again.')
@@ -57,6 +63,12 @@ export default function UnlockPage() {
           <p className="text-scroll-bone-dim text-base max-w-md mx-auto">
             One reading. Or a full year of daily guidance. Both built from your birth code.
           </p>
+          {referralCode && (
+            <div className="inline-flex items-center gap-2 mt-5 bg-scroll-gold/10 border border-scroll-gold/30 rounded-full px-5 py-2">
+              <span className="text-scroll-gold text-xs">◆</span>
+              <span className="text-scroll-gold text-sm font-medium">10% referral discount applied at checkout</span>
+            </div>
+          )}
         </div>
 
         {/* Pricing Cards */}
