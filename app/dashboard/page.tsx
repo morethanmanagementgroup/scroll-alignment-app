@@ -10,6 +10,8 @@ import ShareableScrollCard from '@/components/ui/ShareableScrollCard'
 import ReferralWidget from '@/components/dashboard/ReferralWidget'
 import { storage, getTodayString, formatDate } from '@/lib/storage'
 import { generateDailyScroll } from '@/lib/scrollEngine'
+import { generateReferralCode } from '@/lib/referral'
+import { saveToCloud } from '@/lib/supabaseSync'
 import type { User, DailyScroll, DailyJournal } from '@/lib/types'
 
 export default function DashboardPage() {
@@ -23,9 +25,23 @@ export default function DashboardPage() {
   const today = getTodayString()
 
   useEffect(() => {
-    const u = storage.getUser()
+    let u = storage.getUser()
     if (!u) { router.push('/onboarding'); return }
     if (!u.isPaid) { router.push('/unlock'); return }
+
+    // Back-fill referral code for existing paid users who don't have one yet
+    if (!u.referralCode) {
+      u = {
+        ...u,
+        referralCode: generateReferralCode(),
+        referralBalance: u.referralBalance ?? 0,
+        referralCount: u.referralCount ?? 0,
+      }
+      storage.saveUser(u)
+      // Sync to cloud non-blocking
+      saveToCloud(u.id).catch(() => {})
+    }
+
     setUser(u)
 
     let ds = storage.getDailyScroll(today)
@@ -222,12 +238,9 @@ export default function DashboardPage() {
           </div>
 
           {/* Referral Widget */}
-          {user.referralCode && (
-            <div className="mt-6 mb-10 animate-slide-up">
-              <ReferralWidget user={user} />
-            </div>
-          )}
-          {!user.referralCode && <div className="mb-10" />}
+          <div className="mt-6 mb-10 animate-slide-up">
+            <ReferralWidget user={user} />
+          </div>
 
         </main>
       </div>
