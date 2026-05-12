@@ -26,11 +26,20 @@ interface MobileNavProps {
   isPaid?: boolean
 }
 
+const ADMIN_EMAIL = 'morethanmanagementgroup@gmail.com'
+
 export default function MobileNav({ isPaid = false }: MobileNavProps) {
   const [open, setOpen] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
   const pathname = usePathname()
   const router = useRouter()
   const nav = isPaid ? NAV_PAID : NAV_FREE
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsAdmin(session?.user?.email === ADMIN_EMAIL)
+    })
+  }, [])
 
   // Close drawer on route change
   useEffect(() => { setOpen(false) }, [pathname])
@@ -57,12 +66,12 @@ export default function MobileNav({ isPaid = false }: MobileNavProps) {
       {/* Hamburger button — only visible on mobile */}
       <button
         onClick={() => setOpen(true)}
-        className="md:hidden flex flex-col justify-center items-center w-9 h-9 gap-1.5 rounded-lg hover:bg-scroll-card transition-colors"
+        className="md:hidden flex flex-col justify-center items-center w-10 h-10 gap-[5px] rounded-lg bg-scroll-card border border-scroll-border hover:border-scroll-gold/40 transition-colors"
         aria-label="Open menu"
       >
-        <span className="block w-5 h-px bg-scroll-gold" />
-        <span className="block w-5 h-px bg-scroll-gold" />
-        <span className="block w-3.5 h-px bg-scroll-gold self-start ml-0.5" />
+        <span className="block w-5 h-0.5 bg-scroll-gold rounded-full" />
+        <span className="block w-5 h-0.5 bg-scroll-gold rounded-full" />
+        <span className="block w-3 h-0.5 bg-scroll-gold/60 rounded-full" />
       </button>
 
       {/* Backdrop */}
@@ -128,6 +137,15 @@ export default function MobileNav({ isPaid = false }: MobileNavProps) {
               onClick={() => setOpen(false)}
             >
               ✦ Unlock Full Scroll
+            </Link>
+          )}
+          {isAdmin && (
+            <Link
+              href="/admin"
+              className="block px-4 py-2.5 text-scroll-gold/60 hover:text-scroll-gold text-sm rounded-xl hover:bg-scroll-card transition-colors"
+              onClick={() => setOpen(false)}
+            >
+              ✦ Admin Portal
             </Link>
           )}
           <button

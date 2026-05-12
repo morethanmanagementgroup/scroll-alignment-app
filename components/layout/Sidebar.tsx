@@ -1,8 +1,11 @@
 'use client'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { storage } from '@/lib/storage'
+
+const ADMIN_EMAIL = 'morethanmanagementgroup@gmail.com'
 
 const NAV_PAID = [
   { href: '/dashboard', label: 'Daily Scroll', icon: '◈' },
@@ -25,6 +28,13 @@ export default function Sidebar({ isPaid = false }: { isPaid?: boolean }) {
   const pathname = usePathname()
   const router = useRouter()
   const nav = isPaid ? NAV_PAID : NAV_FREE
+  const [isAdmin, setIsAdmin] = useState(false)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setIsAdmin(session?.user?.email === ADMIN_EMAIL)
+    })
+  }, [])
 
   const handleSignOut = async () => {
     await supabase.auth.signOut()
@@ -69,6 +79,19 @@ export default function Sidebar({ isPaid = false }: { isPaid?: boolean }) {
               Unlock — $33
             </Link>
           </div>
+        )}
+        {isAdmin && (
+          <Link
+            href="/admin"
+            className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all mb-1 ${
+              pathname.startsWith('/admin')
+                ? 'bg-scroll-purple-dim text-scroll-gold border border-scroll-purple/30'
+                : 'text-scroll-gold/50 hover:text-scroll-gold hover:bg-scroll-card'
+            }`}
+          >
+            <span className="text-base">✦</span>
+            Admin
+          </Link>
         )}
         <button
           onClick={handleSignOut}
