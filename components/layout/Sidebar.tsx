@@ -1,6 +1,8 @@
 'use client'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
+import { supabase } from '@/lib/supabase'
+import { storage } from '@/lib/storage'
 
 const NAV_PAID = [
   { href: '/dashboard', label: 'Daily Scroll', icon: '◈' },
@@ -21,7 +23,14 @@ const NAV_FREE = [
 
 export default function Sidebar({ isPaid = false }: { isPaid?: boolean }) {
   const pathname = usePathname()
+  const router = useRouter()
   const nav = isPaid ? NAV_PAID : NAV_FREE
+
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    storage.clearAll()
+    router.push('/')
+  }
 
   return (
     <aside className="hidden md:flex flex-col w-56 bg-scroll-charcoal border-r border-scroll-border min-h-screen py-8 px-4">
@@ -49,9 +58,9 @@ export default function Sidebar({ isPaid = false }: { isPaid?: boolean }) {
         })}
       </nav>
 
-      {!isPaid && (
-        <div className="mt-auto">
-          <div className="scroll-card-gold p-4 text-center">
+      <div className="mt-auto pt-4 border-t border-scroll-border">
+        {!isPaid && (
+          <div className="scroll-card-gold p-4 text-center mb-3">
             <p className="text-xs text-scroll-bone-dim mb-3">Your full scroll awaits.</p>
             <Link
               href="/unlock"
@@ -60,8 +69,15 @@ export default function Sidebar({ isPaid = false }: { isPaid?: boolean }) {
               Unlock — $33
             </Link>
           </div>
-        </div>
-      )}
+        )}
+        <button
+          onClick={handleSignOut}
+          className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-scroll-bone-dim/40 hover:text-scroll-bone-dim hover:bg-scroll-card transition-all"
+        >
+          <span className="text-base">↪</span>
+          Sign Out
+        </button>
+      </div>
     </aside>
   )
 }
