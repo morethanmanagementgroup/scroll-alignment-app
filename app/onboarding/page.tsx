@@ -61,79 +61,91 @@ export default function OnboardingPage() {
     setLoading(true)
     setAuthError('')
 
-    const { lifePathNumber, chineseZodiac, chineseElement } = enrichUserProfile({ birthDate: form.birthDate })
+    try {
+      const { lifePathNumber, chineseZodiac, chineseElement } = enrichUserProfile({ birthDate: form.birthDate })
 
-    // Try to create Supabase auth account
-    let supabaseUserId: string | null = null
+      // Try to create Supabase auth account — non-fatal if it fails
+      let supabaseUserId: string | null = null
 
-    if (form.password.length >= 6) {
-      // Attempt sign up
-      const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
-        email: form.email,
-        password: form.password,
-        options: { data: { firstName: form.firstName } },
-      })
+      if (form.password.length >= 6) {
+        try {
+          // Attempt sign up
+          const { data: signUpData, error: signUpErr } = await supabase.auth.signUp({
+            email: form.email,
+            password: form.password,
+            options: { data: { firstName: form.firstName } },
+          })
 
-      if (signUpErr) {
-        // Email already in use — try signing in instead
-        const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
-          email: form.email,
-          password: form.password,
-        })
+          if (signUpErr) {
+            // Email already in use — try signing in instead
+            const { data: signInData, error: signInErr } = await supabase.auth.signInWithPassword({
+              email: form.email,
+              password: form.password,
+            })
 
-        if (signInErr) {
-          // Wrong password for existing account
-          setAuthError('An account with this email already exists. Please use a different email or go to Sign In.')
-          setLoading(false)
-          return
+            if (signInErr) {
+              // Wrong password for existing account
+              setAuthError('An account with this email already exists. Please use a different email or go to Sign In.')
+              setLoading(false)
+              return
+            }
+            supabaseUserId = signInData.user?.id ?? null
+          } else {
+            supabaseUserId = signUpData.user?.id ?? null
+          }
+        } catch {
+          // Supabase auth failed (network/config issue) — continue without cloud ID
+          console.warn('[onboarding] Supabase auth unavailable, continuing locally')
         }
-        supabaseUserId = signInData.user?.id ?? null
-      } else {
-        supabaseUserId = signUpData.user?.id ?? null
       }
-    }
 
-    const user: User = {
-      id: supabaseUserId ?? generateId(),
-      firstName: form.firstName,
-      email: form.email,
-      birthDate: form.birthDate,
-      birthTime: form.birthTime || undefined,
-      birthCity: form.birthCity,
-      birthRegion: form.birthRegion,
-      birthCountry: form.birthCountry,
-      currentFocus: form.currentFocus,
-      currentIntention: form.currentIntention,
-      lifePathNumber,
-      chineseZodiac,
-      chineseElement,
-      isPaid: false,
-      plan: 'free' as const,
-      referralCode: generateReferralCode(),
-      referralBalance: 0,
-      referralCount: 0,
-      createdAt: new Date().toISOString(),
-    }
+      const user: User = {
+        id: supabaseUserId ?? generateId(),
+        firstName: form.firstName,
+        email: form.email,
+        birthDate: form.birthDate,
+        birthTime: form.birthTime || undefined,
+        birthCity: form.birthCity,
+        birthRegion: form.birthRegion,
+        birthCountry: form.birthCountry,
+        currentFocus: form.currentFocus,
+        currentIntention: form.currentIntention,
+        lifePathNumber,
+        chineseZodiac,
+        chineseElement,
+        isPaid: false,
+        plan: 'free' as const,
+        referralCode: generateReferralCode(),
+        referralBalance: 0,
+        referralCount: 0,
+        createdAt: new Date().toISOString(),
+      }
 
-    // Check for a pending payment (from success page before account existed)
-    let finalUser = user
-    const pendingRaw = localStorage.getItem('scroll_pending_payment')
-    if (pendingRaw) {
+      // Check for a pending payment (from success page before account existed)
+      let finalUser = user
       try {
-        const pending = JSON.parse(pendingRaw)
-        finalUser = { ...user, isPaid: true, plan: pending.plan || 'reading', stripeSessionId: pending.sessionId }
-        localStorage.removeItem('scroll_pending_payment')
+        const pendingRaw = localStorage.getItem('scroll_pending_payment')
+        if (pendingRaw) {
+          const pending = JSON.parse(pendingRaw)
+          finalUser = { ...user, isPaid: true, plan: pending.plan || 'reading', stripeSessionId: pending.sessionId }
+          localStorage.removeItem('scroll_pending_payment')
+        }
       } catch { /* ignore */ }
+
+      storage.saveUser(finalUser)
+
+      // Background sync to Supabase (non-blocking)
+      if (supabaseUserId) {
+        saveToCloud(supabaseUserId).catch(() => {})
+      }
+
+      router.push(finalUser.isPaid ? '/report' : '/snapshot')
+
+    } catch (err) {
+      console.error('[onboarding] handleSubmit error:', err)
+      setAuthError('Something went wrong. Please try again.')
+      setLoading(false)
     }
-
-    storage.saveUser(finalUser)
-
-    // Background sync to Supabase (non-blocking)
-    if (supabaseUserId) {
-      saveToCloud(supabaseUserId).catch(() => {})
-    }
-
-    router.push(finalUser.isPaid ? '/report' : '/snapshot')
   }
 
   const canNext = [
