@@ -1,66 +1,62 @@
 // ============================================================
 // SCROLL ALIGNMENT — Local birth time → UTC
 // Resolves a wall-clock time in an IANA zone to the exact UTC
-// instant(s) it can mean, using the runtime's IANA tz database
-// (Node's built-in ICU data). Handles three cases explicitly:
+// instant(s) it can mean, using the bundled IANA tz table
+// (data/tz-transitions.json, with backzone history). Handles three cases explicitly:
 //   ok          — exactly one instant
 //   ambiguous   — the clock showed this time twice (clocks fell back)
 //   nonexistent — the clock skipped this time (clocks sprang forward)
 // Pure and deterministic for a given tz database version.
 // ============================================================
 
+import { readFileSync } from 'fs'
+import path from 'path'
 import type { LocalTimeResolution, TimeChoice } from './types'
 
 const DATE_RE = /^(\d{4})-(\d{2})-(\d{2})$/
 const TIME_RE = /^(\d{2}):(\d{2})$/
 
 export const MIN_YEAR = 1850
-export const MAX_YEAR = 2100
+export const MAX_YEAR = 2040   // end of the bundled tz table
 
-const formatters = new Map<string, Intl.DateTimeFormat>()
+// ─── Time-zone table ──────────────────────────────────────────
+// Built by scripts/build-tz.py from the IANA database WITH backzone history.
+// Node's built-in ICU zone data drops that history, which silently gives many
+// places a neighbour's rules before 1970 (e.g. Stockholm 1947 → Berlin's DST).
 
-function formatterFor(timeZone: string): Intl.DateTimeFormat {
-  let f = formatters.get(timeZone)
-  if (!f) {
-    f = new Intl.DateTimeFormat('en-US', {
-      timeZone,
-      hourCycle: 'h23',
-      year: 'numeric', month: '2-digit', day: '2-digit',
-      hour: '2-digit', minute: '2-digit', second: '2-digit',
-      era: 'short',
-    })
-    formatters.set(timeZone, f)
-  }
-  return f
+interface TzTable { tzdb: string; range: [string, string]; zones: Record<string, { t: number[]; o: number[] }> }
+let table: TzTable | null = null
+
+function tz(): TzTable {
+  if (!table) table = JSON.parse(readFileSync(path.join(process.cwd(), 'data', 'tz-transitions.json'), 'utf8')) as TzTable
+  return table
 }
 
-/** True when the runtime knows this IANA zone. */
+/** True when this IANA zone is in Scroll's table. */
 export function isValidTimeZone(timeZone: string): boolean {
-  try { formatterFor(timeZone); return true } catch { return false }
-}
-
-/** The local wall-clock reading of a UTC instant, as "UTC-like" milliseconds. */
-function wallClockMs(utcMs: number, timeZone: string): number {
-  const parts = formatterFor(timeZone).formatToParts(new Date(utcMs))
-  const get = (t: string) => parts.find(p => p.type === t)?.value ?? '0'
-  let year = parseInt(get('year'), 10)
-  if (get('era') === 'BC') year = 1 - year
-  const ms = Date.UTC(
-    year, parseInt(get('month'), 10) - 1, parseInt(get('day'), 10),
-    parseInt(get('hour'), 10), parseInt(get('minute'), 10), parseInt(get('second'), 10),
-  )
-  // Intl rounds to whole seconds; keep the sub-second part of the input.
-  return ms + (((utcMs % 1000) + 1000) % 1000)
+  return Object.prototype.hasOwnProperty.call(tz().zones, timeZone)
 }
 
 /** UTC offset (seconds, east-positive) in force at a UTC instant. */
 export function offsetSecondsAt(utcMs: number, timeZone: string): number {
-  return Math.round((wallClockMs(utcMs, timeZone) - utcMs) / 1000)
+  const z = tz().zones[timeZone]
+  const s = Math.floor(utcMs / 1000)
+  let lo = 0, hi = z.t.length - 1
+  if (s < z.t[0]) return z.o[0]
+  while (lo < hi) {               // last transition at or before s
+    const mid = (lo + hi + 1) >> 1
+    if (z.t[mid] <= s) lo = mid; else hi = mid - 1
+  }
+  return z.o[lo]
 }
 
-/** Version of the IANA tz database the runtime uses (e.g. "2025b"). */
+function wallClockMs(utcMs: number, timeZone: string): number {
+  return utcMs + offsetSecondsAt(utcMs, timeZone) * 1000
+}
+
+/** Version of the IANA tz database used (e.g. "2026e+backzone"). */
 export function tzdbVersion(): string {
-  return (process.versions as Record<string, string | undefined>).tz ?? 'unknown'
+  return `${tz().tzdb}+backzone`
 }
 
 /**

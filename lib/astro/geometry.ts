@@ -162,29 +162,62 @@ function distanceToHalfMeridian(lat: number, lon: number, lineLon: number) {
   return { km: greatCircleKm(lat, lon, pole, lineLon), nearestLat: pole, nearestLon: lineLon }
 }
 
-/** Distance to an ASC/DSC curve: coarse scan in latitude, then golden-section refinement. */
+/**
+ * Distance to an ASC/DSC curve. The curve is scanned two ways — evenly in
+ * latitude, and evenly in the semi-diurnal arc H₀ (which is dense where the
+ * curve runs east–west near its polar tip) — then refined by golden-section
+ * search around the best sample.
+ */
 function distanceToHorizonCurve(lat: number, lon: number, angle: 'ASC' | 'DSC', pos: BodyPosition, gastH: number) {
   const limit = horizonLatitudeLimit(pos.decDeg)
-  const at = (phi: number) => {
+  const mc = mcLongitude(pos.raHours, gastH)
+  const tanDec = Math.tan(pos.decDeg * D2R)
+  const byLat = (phi: number) => {
     const l = lineLongitudeAt(angle, pos, gastH, phi)
     return l === null ? Infinity : greatCircleKm(lat, lon, phi, l)
   }
-  const step = 0.25
-  let best = -limit, bestD = Infinity
-  for (let phi = -limit; phi <= limit + 1e-9; phi += step) {
-    const d = at(Math.min(phi, limit))
-    if (d < bestD) { bestD = d; best = Math.min(phi, limit) }
+  // Point on the curve for a given H₀ (undefined at δ = 0, where the curve is a meridian pair).
+  const pointByH0 = (h0: number): [number, number] => [
+    Math.atan(-Math.cos(h0 * D2R) / tanDec) * R2D,
+    norm180(angle === 'ASC' ? mc - h0 : mc + h0),
+  ]
+  const byH0 = (h0: number) => { const [phi, l] = pointByH0(h0); return greatCircleKm(lat, lon, phi, l) }
+
+  const golden = (f: (x: number) => number, a: number, b: number) => {
+    const g = (Math.sqrt(5) - 1) / 2
+    for (let i = 0; i < 60; i++) {
+      const c = b - g * (b - a), d = a + g * (b - a)
+      if (f(c) < f(d)) b = d; else a = c
+    }
+    return (a + b) / 2
   }
-  let a = Math.max(-limit, best - step), b = Math.min(limit, best + step)
-  const g = (Math.sqrt(5) - 1) / 2
-  for (let i = 0; i < 60; i++) {
-    const c = b - g * (b - a), d = a + g * (b - a)
-    if (at(c) < at(d)) b = d; else a = c
+
+  // Scan in latitude.
+  const stepLat = 0.25
+  let bestLat = -limit, bestLatD = Infinity
+  for (let phi = -limit; phi <= limit + 1e-9; phi += stepLat) {
+    const p = Math.min(phi, limit), d = byLat(p)
+    if (d < bestLatD) { bestLatD = d; bestLat = p }
   }
-  const phi = (a + b) / 2
-  const dPhi = at(phi)
-  if (dPhi < bestD) { best = phi; bestD = dPhi }
-  return { km: bestD, nearestLat: best, nearestLon: lineLongitudeAt(angle, pos, gastH, best) ?? lon }
+  const refLat = golden(byLat, Math.max(-limit, bestLat - stepLat), Math.min(limit, bestLat + stepLat))
+  let best = { km: byLat(refLat), nearestLat: refLat, nearestLon: lineLongitudeAt(angle, pos, gastH, refLat) ?? lon }
+  if (bestLatD < best.km) best = { km: bestLatD, nearestLat: bestLat, nearestLon: lineLongitudeAt(angle, pos, gastH, bestLat) ?? lon }
+
+  // Scan in H₀ (skipped when δ ≈ 0: the curve is then a meridian and latitude scanning is exact).
+  if (Math.abs(tanDec) > 1e-9) {
+    const stepH = 0.5
+    let bestH = 0, bestHD = Infinity
+    for (let h = 0; h <= 180 + 1e-9; h += stepH) {
+      const d = byH0(Math.min(h, 180))
+      if (d < bestHD) { bestHD = d; bestH = Math.min(h, 180) }
+    }
+    const refH = golden(byH0, Math.max(0, bestH - stepH), Math.min(180, bestH + stepH))
+    for (const h of [refH, bestH]) {
+      const d = byH0(h)
+      if (d < best.km) { const [phi, l] = pointByH0(h); best = { km: d, nearestLat: phi, nearestLon: l } }
+    }
+  }
+  return best
 }
 
 /** Distance (km) from a point to every line, nearest first. */

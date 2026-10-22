@@ -7,7 +7,7 @@ const nextConfig = {
     // with the routes that need it.
     outputFileTracingIncludes: {
       '/api/places/search': ['./data/cities.json'],
-      '/api/birth/confirm': ['./data/cities.json'],
+      '/api/birth/confirm': ['./data/cities.json', './data/tz-transitions.json'],
     },
   },
 }

@@ -65,3 +65,14 @@ test('invalid inputs', () => {
   assert.equal(resolveLocalTime('1990-01-01', '10:00', 'Mars/Olympus').status, 'invalid')
   assert.equal(resolveLocalTime('1700-01-01', '10:00', 'UTC').status, 'invalid')
 })
+
+test('pre-1970 history uses local records (backzone): Stockholm 1947 had no DST', () => {
+  const r = resolveLocalTime('1947-07-01', '12:00', 'Europe/Stockholm')
+  assert.equal(r.status === 'ok' && r.offsetSeconds, 3600)
+})
+
+test('local mean time before standard time is flagged', () => {
+  const r = resolveLocalTime('1880-05-01', '12:00', 'America/New_York')
+  assert.equal(r.status, 'ok')
+  if (r.status === 'ok') { assert.equal(r.offsetSeconds, -(4 * 3600 + 56 * 60 + 2)); assert.equal(r.lmtWarning, true) }
+})
