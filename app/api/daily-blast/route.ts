@@ -59,7 +59,12 @@ export async function GET(req: NextRequest) {
   // Validate cron secret to prevent unauthorized triggers
   const authHeader = req.headers.get('authorization')
   const cronSecret = process.env.CRON_SECRET
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+  // Fail closed: with no secret configured, nobody may trigger a blast.
+  if (!cronSecret) {
+    console.error('[daily-blast] CRON_SECRET is not set; refusing to run')
+    return NextResponse.json({ error: 'Cron is not configured' }, { status: 503 })
+  }
+  if (authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 

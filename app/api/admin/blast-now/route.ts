@@ -32,7 +32,10 @@ export async function POST(req: NextRequest) {
 
   // Call the daily-blast endpoint internally
   const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://scroll-alignment.vercel.app'
-  const cronSecret = process.env.CRON_SECRET ?? ''
+  const cronSecret = process.env.CRON_SECRET
+  if (!cronSecret) {
+    return NextResponse.json({ error: 'CRON_SECRET is not set in Vercel, so the blast cannot run.' }, { status: 503 })
+  }
 
   try {
     const res = await fetch(`${appUrl}/api/daily-blast`, {

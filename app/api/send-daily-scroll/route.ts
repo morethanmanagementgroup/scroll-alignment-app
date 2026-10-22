@@ -5,32 +5,37 @@
 //   2. Opt-in confirmation email (first send on toggle)
 //   3. Manual re-send if user requests
 //
-// POST body: { userId: string, email: string, testMode?: boolean }
+// POST body: { testMode?: boolean, userId?: string (admin only) }
+// Access: signed-in paid members, sending to their own address only.
+// The admin may send to another member by userId. Capped per day.
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { getAdminClient, requirePaidUser, updateServerFields } from '@/lib/server/auth'
 import { buildDailyScrollEmail } from '@/lib/email/dailyScrollEmail'
 import { generateDailyScrollTemplate } from '@/lib/scrollEngine'
 import type { User, DailyScroll } from '@/lib/types'
 
-function getAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !key) throw new Error('Missing Supabase env vars')
-  return createClient(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false }
-  })
-}
+const MAX_SENDS_PER_DAY = 5
 
 export async function POST(req: NextRequest) {
   try {
-    const body = await req.json()
-    const { userId, testMode = false } = body
+    const auth = await requirePaidUser(req)
+    if (!auth.ok) return auth.response
 
-    if (!userId) {
-      return NextResponse.json({ error: 'userId required' }, { status: 400 })
+    const body = await req.json().catch(() => ({}))
+    const testMode = body?.testMode === true
+    const userId: string =
+      auth.entitlement.isAdmin && typeof body?.userId === 'string' && body.userId ? body.userId : auth.user.id
+
+    // Abuse guard on the sender's own profile.
+    const now = Date.now()
+    const sendLog: string[] = Array.isArray(auth.profile?.emailSendLog) ? auth.profile!.emailSendLog : []
+    const recent = sendLog.filter(t => now - Date.parse(t) < 24 * 3600_000)
+    if (recent.length >= MAX_SENDS_PER_DAY && !auth.entitlement.isAdmin) {
+      return NextResponse.json({ error: 'Daily email limit reached' }, { status: 429 })
     }
+    await updateServerFields(auth.user.id, { emailSendLog: [...recent, new Date(now).toISOString()] })
 
     const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'https://scroll-alignment.vercel.app'
     const today  = new Date().toISOString().split('T')[0]

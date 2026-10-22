@@ -8,6 +8,7 @@ import { storage, formatDate, getTodayString } from '@/lib/storage'
 import { generateFullReport } from '@/lib/scrollEngine'
 import { getLifePathLabel } from '@/lib/numerology'
 import { saveToCloud, getCloudUserId } from '@/lib/supabaseSync'
+import { authFetch } from '@/lib/clientAuth'
 import type { User, FullScrollReport } from '@/lib/types'
 
 // ── Cinematic loading stages ──────────────────────────────────
@@ -104,11 +105,9 @@ export default function ReportPage() {
     }, 2800)
 
     try {
-      const res = await fetch('/api/generate-report', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ user: u }),
-      })
+      // The server builds the prompt from your stored profile and checks
+      // membership itself; signed-out devices fall back to the template.
+      const res = await authFetch('/api/generate-report', { method: 'POST', body: '{}' })
 
       clearInterval(interval)
 

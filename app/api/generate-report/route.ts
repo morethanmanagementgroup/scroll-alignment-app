@@ -3,12 +3,17 @@
 // POST /api/generate-report
 // Calls Claude to generate a fully personalized FullScrollReport.
 // Requires ANTHROPIC_API_KEY in environment variables.
+// Access: signed-in paid members only (checked server-side). The
+// prompt is built from the profile stored on the server, never from
+// the request body, and generations are capped per user per day.
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server'
+import { requirePaidUser, updateServerFields } from '@/lib/server/auth'
 import type { User, FullScrollReport, ThirtyDayEntry } from '@/lib/types'
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
+const MAX_PER_DAY = 3
 
 // ── Build the generation prompt ───────────────────────────────
 
@@ -103,16 +108,23 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  let user: User
-  try {
-    const body = await req.json()
-    user = body.user as User
-    if (!user?.id || !user?.birthDate) {
-      return NextResponse.json({ error: 'Invalid user data' }, { status: 400 })
-    }
-  } catch {
-    return NextResponse.json({ error: 'Invalid request body' }, { status: 400 })
+  const auth = await requirePaidUser(req)
+  if (!auth.ok) return auth.response
+
+  const user = auth.profile as User | null
+  if (!user?.birthDate || !user?.firstName) {
+    return NextResponse.json({ error: 'Profile not found. Sign in on the device you onboarded with, then try again.' }, { status: 400 })
   }
+  user.id = auth.user.id
+
+  // Cost guard: at most MAX_PER_DAY AI readings per member per rolling 24 hours.
+  const now = Date.now()
+  const log: string[] = Array.isArray(auth.profile?.aiReportLog) ? auth.profile!.aiReportLog : []
+  const recent = log.filter(t => now - Date.parse(t) < 24 * 3600_000)
+  if (recent.length >= MAX_PER_DAY && !auth.entitlement.isAdmin) {
+    return NextResponse.json({ error: 'Daily reading limit reached. Your saved reading is still available.' }, { status: 429 })
+  }
+  await updateServerFields(auth.user.id, { aiReportLog: [...recent, new Date(now).toISOString()] })
 
   const personalYear = getPersonalYear(user.birthDate, new Date().getFullYear())
   const prompt = buildPrompt(user, personalYear)
@@ -140,7 +152,7 @@ export async function POST(req: NextRequest) {
     if (!response.ok) {
       const err = await response.text()
       console.error('[generate-report] Anthropic error:', err)
-      return NextResponse.json({ error: 'AI generation failed', detail: err }, { status: 500 })
+      return NextResponse.json({ error: 'AI generation failed' }, { status: 502 })
     }
 
     const data = await response.json()
@@ -192,6 +204,6 @@ export async function POST(req: NextRequest) {
 
   } catch (err) {
     console.error('[generate-report]', err)
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    return NextResponse.json({ error: 'AI generation failed' }, { status: 500 })
   }
 }

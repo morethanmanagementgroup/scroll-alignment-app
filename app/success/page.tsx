@@ -2,7 +2,7 @@
 import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { storage } from '@/lib/storage'
-import { getCloudUserId, syncPaymentToCloud } from '@/lib/supabaseSync'
+import { authFetch } from '@/lib/clientAuth'
 import { getStoredReferralCode, clearReferralCode } from '@/lib/referral'
 
 type Status = 'verifying' | 'success' | 'need-onboarding' | 'error'
@@ -43,11 +43,11 @@ function SuccessContent() {
         }))
 
         // 3. Try server-side activation (works regardless of local state)
-        fetch('/api/activate-payment', {
+        // Signed-in buyers are attached by account; others by checkout email.
+        const activation = authFetch('/api/activate-payment', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ sessionId }),
-        }).catch(() => {})
+        }).catch(() => null)
 
         // 3b. Record referral if one was used
         const referralCode = getStoredReferralCode()
@@ -66,11 +66,9 @@ function SuccessContent() {
         if (user) {
           storage.saveUser({ ...user, isPaid: true, plan: resolvedPlan, stripeSessionId: sessionId })
 
-          // 5. Sync to cloud
-          const cloudUserId = await getCloudUserId()
-          if (cloudUserId) {
-            syncPaymentToCloud(cloudUserId, resolvedPlan, sessionId).catch(() => {})
-          }
+          // 5. The server is the source of truth for payment status;
+          //    wait for activation before moving on.
+          await activation
 
           setStatus('success')
           setTimeout(() => router.push('/report'), 2500)

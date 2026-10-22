@@ -6,6 +6,7 @@ import Sidebar from '@/components/layout/Sidebar'
 import Card from '@/components/ui/Card'
 import Button from '@/components/ui/Button'
 import { storage, getTodayString } from '@/lib/storage'
+import { authFetch } from '@/lib/clientAuth'
 import { enrichUserProfile } from '@/lib/scrollEngine'
 import { FOCUS_MESSAGES } from '@/lib/templates'
 import type { User } from '@/lib/types'
@@ -106,10 +107,9 @@ export default function SettingsPage() {
     if (!user) return
     setEmailSending(true)
     try {
-      const res = await fetch('/api/send-daily-scroll', {
+      const res = await authFetch('/api/send-daily-scroll', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: user.id, testMode: true }),
+        body: JSON.stringify({ testMode: true }),
       })
       if (res.ok) {
         setEmailSent(true)

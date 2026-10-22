@@ -8,16 +8,14 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 import { stripe } from '@/lib/stripe'
+import { getAdminClient, getAuthUser } from '@/lib/server/auth'
 
-function getAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!
-  return createClient(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false }
-  })
-}
+// Payment status is server-owned: this route (after verifying the
+// Stripe session) is the only place a membership is switched on.
+// If the caller is signed in, the payment is attached to THEIR
+// account, so a buyer who used a different email at checkout is
+// still activated. A Stripe session can only activate one account.
 
 export async function POST(req: NextRequest) {
   try {
@@ -38,11 +36,24 @@ export async function POST(req: NextRequest) {
     }
 
     const plan      = session.metadata?.plan || 'reading'
-    const userId    = session.metadata?.userId || ''
+    const caller    = await getAuthUser(req)
+    const userId    = caller?.id || session.metadata?.userId || ''
     const email     = session.metadata?.email || session.customer_email || ''
 
     const supabase  = getAdminClient()
     let activated   = false
+
+    // One Stripe session → one account.
+    const { data: claimed } = await supabase
+      .from('user_profiles')
+      .select('id')
+      .filter('profile->>stripeSessionId', 'eq', sessionId)
+    if (claimed && claimed.length > 0) {
+      if (userId && claimed.some(r => r.id === userId)) {
+        return NextResponse.json({ activated: true, alreadyActive: true, plan })
+      }
+      return NextResponse.json({ activated: false, reason: 'session_already_used' }, { status: 409 })
+    }
 
     // ── Try by userId (most reliable) ────────────────────────
     if (userId) {
@@ -95,6 +106,6 @@ export async function POST(req: NextRequest) {
 
   } catch (err) {
     console.error('[activate-payment]', err)
-    return NextResponse.json({ error: String(err) }, { status: 500 })
+    return NextResponse.json({ error: 'Activation failed' }, { status: 500 })
   }
 }

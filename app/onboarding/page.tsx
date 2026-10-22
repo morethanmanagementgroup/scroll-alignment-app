@@ -7,6 +7,7 @@ import { storage, generateId } from '@/lib/storage'
 import { enrichUserProfile } from '@/lib/scrollEngine'
 import { supabase } from '@/lib/supabase'
 import { saveToCloud } from '@/lib/supabaseSync'
+import { authFetch } from '@/lib/clientAuth'
 import { generateReferralCode } from '@/lib/referral'
 import type { User, FocusArea } from '@/lib/types'
 
@@ -121,22 +122,33 @@ export default function OnboardingPage() {
         createdAt: new Date().toISOString(),
       }
 
-      // Check for a pending payment (from success page before account existed)
+      // Check for a pending payment (from success page before account existed).
+      // The server re-verifies it with Stripe and attaches it to this account;
+      // the local flag only controls which page opens next.
       let finalUser = user
+      let pendingSessionId: string | null = null
       try {
         const pendingRaw = localStorage.getItem('scroll_pending_payment')
         if (pendingRaw) {
           const pending = JSON.parse(pendingRaw)
+          pendingSessionId = typeof pending.sessionId === 'string' ? pending.sessionId : null
           finalUser = { ...user, isPaid: true, plan: pending.plan || 'reading', stripeSessionId: pending.sessionId }
-          localStorage.removeItem('scroll_pending_payment')
         }
       } catch { /* ignore */ }
 
       storage.saveUser(finalUser)
 
-      // Background sync to Supabase (non-blocking)
       if (supabaseUserId) {
-        saveToCloud(supabaseUserId).catch(() => {})
+        try {
+          await saveToCloud(supabaseUserId)
+          if (pendingSessionId) {
+            const res = await authFetch('/api/activate-payment', {
+              method: 'POST',
+              body: JSON.stringify({ sessionId: pendingSessionId }),
+            })
+            if (res.ok) localStorage.removeItem('scroll_pending_payment')
+          }
+        } catch { /* non-fatal: activation is retried from the success link */ }
       }
 
       router.push(finalUser.isPaid ? '/report' : '/snapshot')
