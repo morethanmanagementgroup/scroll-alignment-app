@@ -1,5 +1,7 @@
 'use client'
 import { useState } from 'react'
+import PlaceSearch from '@/components/astro/PlaceSearch'
+import type { Place } from '@/lib/astro/types'
 import { useRouter } from 'next/navigation'
 import Header from '@/components/layout/Header'
 import Button from '@/components/ui/Button'
@@ -24,10 +26,12 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(0)
   const [loading, setLoading] = useState(false)
   const [authError, setAuthError] = useState('')
+  const [birthPlace, setBirthPlace] = useState<Place | null>(null)
   const [form, setForm] = useState({
     firstName: '', email: '', password: '',
     birthDate: '', birthTime: '',
-    birthCity: '', birthRegion: '', birthCountry: 'United States',
+    birthCity: '', birthRegion: '', birthCountry: '',
+    timeAccuracy: 'exact',
     currentFocus: 'Purpose' as FocusArea,
     currentIntention: '',
   })
@@ -141,6 +145,19 @@ export default function OnboardingPage() {
       if (supabaseUserId) {
         try {
           await saveToCloud(supabaseUserId)
+          // Save coordinates, time zone and the UTC birth instant server-side.
+          // If the local time was skipped/repeated (DST), the member resolves
+          // it later on My Map; nothing here blocks onboarding.
+          if (birthPlace) {
+            await authFetch('/api/birth/confirm', {
+              method: 'POST',
+              body: JSON.stringify({
+                placeId: birthPlace.id, date: form.birthDate,
+                time: form.birthTime || null,
+                timeAccuracy: form.birthTime ? form.timeAccuracy : 'unknown',
+              }),
+            }).catch(() => null)
+          }
           if (pendingSessionId) {
             const res = await authFetch('/api/activate-payment', {
               method: 'POST',
@@ -162,7 +179,7 @@ export default function OnboardingPage() {
 
   const canNext = [
     form.firstName && form.email && form.password.length >= 6,
-    form.birthDate && form.birthCity && form.birthRegion,
+    form.birthDate && birthPlace,
     form.currentFocus && form.currentIntention.length > 3,
   ][step]
 
@@ -228,21 +245,24 @@ export default function OnboardingPage() {
                 <input type="date" className="scroll-input" value={form.birthDate}
                   onChange={e => update('birthDate', e.target.value)} />
               </Field>
-              <Field label="Birth Time" hint="Optional — used for advanced readings">
+              <Field label="Birth Time" hint="Optional — needed for your map">
                 <input type="time" className="scroll-input" value={form.birthTime}
                   onChange={e => update('birthTime', e.target.value)} />
               </Field>
-              <Field label="Birth City" required>
-                <input className="scroll-input" placeholder="City where you were born" value={form.birthCity}
-                  onChange={e => update('birthCity', e.target.value)} />
-              </Field>
-              <Field label="State / Province" required>
-                <input className="scroll-input" placeholder="State or province" value={form.birthRegion}
-                  onChange={e => update('birthRegion', e.target.value)} />
-              </Field>
-              <Field label="Country" required>
-                <input className="scroll-input" placeholder="Country" value={form.birthCountry}
-                  onChange={e => update('birthCountry', e.target.value)} />
+              {form.birthTime && (
+                <Field label="How sure are you of that time?">
+                  <select className="scroll-input" value={form.timeAccuracy}
+                    onChange={e => update('timeAccuracy', e.target.value)}>
+                    <option value="exact">Exact — from a birth certificate or hospital record</option>
+                    <option value="approximate">Approximate — remembered or estimated</option>
+                  </select>
+                </Field>
+              )}
+              <Field label="Birthplace" required>
+                <PlaceSearch value={birthPlace} onChange={p => {
+                  setBirthPlace(p)
+                  setForm(f => ({ ...f, birthCity: p?.name ?? '', birthRegion: p?.admin1 ?? '', birthCountry: p?.countryName ?? '' }))
+                }} placeholder="City where you were born" />
               </Field>
             </div>
           )}

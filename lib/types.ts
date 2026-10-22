@@ -3,6 +3,8 @@
 // Supabase-ready structure. localStorage for MVP.
 // ============================================================
 
+import type { BirthChartRecord, LocationContext } from './astro/types'
+
 export type FocusArea =
   | 'Purpose' | 'Business' | 'Love' | 'Healing' | 'Discipline'
   | 'Fitness' | 'Money' | 'Creativity' | 'Spiritual Growth'
@@ -34,6 +36,9 @@ export interface User {
   referralCode?: string      // unique referral code (e.g. SCRX7K2P)
   referralBalance?: number   // lifetime earnings in USD (e.g. 9.90)
   referralCount?: number     // total successful referrals
+  // Confirmed birthplace (coordinates + IANA zone), time accuracy and the
+  // resolved UTC instant. Server-owned: written only by /api/birth/confirm.
+  birthChart?: BirthChartRecord
   createdAt: string          // ISO 8601
 }
 
@@ -117,6 +122,9 @@ export interface DailyScroll {
   eveningReflection: string
   completionScore: number    // 0–100
   generationMode: GenerationMode
+  // PHASE 3 INTEGRATION POINT (not built): location-aware facts computed by
+  // the server for one exact instant. Templates/AI may only interpret these.
+  locationContext?: LocationContext
 }
 
 // ─── Journal Entry (legacy flat format) ──────────────────────

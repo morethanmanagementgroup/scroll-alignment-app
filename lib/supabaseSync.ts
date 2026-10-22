@@ -8,6 +8,8 @@ import { supabase } from './supabase'
 import { storage } from './storage'
 import type { JournalEntry, DailyScroll, Routine } from './types'
 
+const SERVER_OWNED_KEYS = ['birthChart', 'aiReportLog', 'emailSendLog'] as const
+
 // ─── Save all local data to Supabase ─────────────────────────
 export async function saveToCloud(userId: string): Promise<void> {
   try {
@@ -16,11 +18,27 @@ export async function saveToCloud(userId: string): Promise<void> {
     const report = storage.getFullReport()
     const journals = storage.getJournalEntries()
 
+    // Keys written only by the server (birth chart, usage logs) are kept
+    // from the cloud copy so a stale local profile can't erase them.
+    // The database trigger enforces this too once its migration is applied.
+    let profile: unknown = user
+    if (user) {
+      const { data: existing } = await supabase
+        .from('user_profiles').select('profile').eq('id', userId).maybeSingle()
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const cloud = (existing?.profile ?? {}) as Record<string, any>
+      const merged: Record<string, unknown> = { ...user }
+      for (const k of SERVER_OWNED_KEYS) {
+        if (k in cloud) merged[k] = cloud[k]
+      }
+      profile = merged
+    }
+
     await supabase.from('user_profiles').upsert(
       {
         id: userId,
         email: user?.email ?? '',
-        profile: user as unknown,
+        profile,
         snapshot: snapshot as unknown,
         report: report as unknown,
         journals: journals as unknown,

@@ -72,6 +72,7 @@ export default function Header({ isPaid = false }: HeaderProps) {
               <NavLink href="/routine" label="Routine" current={pathname} />
               <NavLink href="/streak" label="Streak" current={pathname} />
               <NavLink href="/calendar" label="Calendar" current={pathname} />
+              <NavLink href="/map" label="My Map" current={pathname} />
               <NavLink href="/library" label="Library" current={pathname} />
               <NavLink href="/settings" label="Settings" current={pathname} />
               <button

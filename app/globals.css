@@ -99,3 +99,27 @@ html, body {
 .orb-gold { background: radial-gradient(circle, #C9A96E, transparent); }
 .orb-purple { background: radial-gradient(circle, #6B4E8A, transparent); }
 .orb-blue { background: radial-gradient(circle, #1C2E5A, transparent); }
+
+/* Form input (shared; onboarding/sign-in also define it inline) */
+.scroll-input {
+  width: 100%;
+  background: #161624;
+  border: 1px solid #232338;
+  border-radius: 8px;
+  color: #F0EBE1;
+  padding: 12px 16px;
+  font-size: 15px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+.scroll-input:focus { border-color: #C9A96E; }
+.scroll-input::placeholder { color: #B8B0A4; }
+select.scroll-input { appearance: none; }
+
+/* My Map — MapLibre controls in Scroll colours */
+.astro-map .maplibregl-ctrl-group { background: #161624; border: 1px solid #232338; box-shadow: none; }
+.astro-map .maplibregl-ctrl-group button { filter: invert(0.85) sepia(0.4) hue-rotate(5deg); }
+.astro-map .maplibregl-ctrl-group button + button { border-top: 1px solid #232338; }
+.astro-map .maplibregl-ctrl-attrib { background: rgba(8, 8, 16, 0.7) !important; color: #B8B0A4; font-size: 10px; }
+.astro-map .maplibregl-ctrl-attrib a { color: #C9A96E; }
+.astro-map .maplibregl-canvas { outline: none; }
