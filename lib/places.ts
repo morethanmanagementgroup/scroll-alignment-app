@@ -36,8 +36,16 @@ function load(): Indexed {
   return cache
 }
 
+// Letters that Unicode decomposition does not reduce to ASCII.
+const FOLD: Record<string, string> = {
+  ø: 'o', œ: 'oe', æ: 'ae', ß: 'ss', ł: 'l', đ: 'd', ð: 'd', þ: 'th', ı: 'i', ħ: 'h', ŧ: 't', ŋ: 'n', ĸ: 'k',
+}
+
 export function normalise(s: string): string {
-  return s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+  return s.toLowerCase()
+    .replace(/[øœæßłđðþıħŧŋĸ]/g, c => FOLD[c])
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, ' ').trim()
 }
 
 function toPlace(ix: Indexed, i: number): Place {
