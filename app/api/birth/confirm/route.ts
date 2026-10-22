@@ -25,6 +25,8 @@ import { chooseInstant, resolveLocalTime, tzdbVersion } from '@/lib/astro/time'
 import { formatOffset } from '@/lib/astro/format'
 import type { BirthChartRecord, BirthTimeAccuracy, TimeChoice } from '@/lib/astro/types'
 
+export const dynamic = 'force-dynamic'
+
 export const runtime = 'nodejs'
 
 const ACCURACIES: BirthTimeAccuracy[] = ['exact', 'approximate', 'unknown']

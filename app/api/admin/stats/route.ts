@@ -6,17 +6,12 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { getAdminClient } from '@/lib/server/auth'
+
+export const dynamic = 'force-dynamic'
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL ?? 'morethanmanagementgroup@gmail.com'
 
-function getAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!
-  return createClient(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false }
-  })
-}
 
 export async function GET(req: NextRequest) {
   // Validate caller is admin via Authorization header (Supabase JWT)

@@ -23,7 +23,12 @@ export function getAdminClient(): SupabaseClient {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY
   if (!url || !key) throw new Error('Supabase server credentials are not configured')
-  adminClient = createClient(url, key, { auth: { autoRefreshToken: false, persistSession: false } })
+  adminClient = createClient(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+    // Next.js 14 caches fetch() GETs on the server for up to a year by default.
+    // Database reads and token checks must always be live.
+    global: { fetch: (input, init) => fetch(input, { ...init, cache: 'no-store' }) },
+  })
   return adminClient
 }
 

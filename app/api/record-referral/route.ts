@@ -7,16 +7,11 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { getAdminClient } from '@/lib/server/auth'
 import { stripe } from '@/lib/stripe'
 
-function getAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL!
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY!
-  return createClient(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false }
-  })
-}
+export const dynamic = 'force-dynamic'
+
 
 const REFERRAL_PERCENT = 0.10  // 10% of amount paid
 

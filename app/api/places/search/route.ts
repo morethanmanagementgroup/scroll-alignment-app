@@ -4,6 +4,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { searchPlaces } from '@/lib/places'
 
+export const dynamic = 'force-dynamic'
+
 export const runtime = 'nodejs'
 
 export async function GET(req: NextRequest) {

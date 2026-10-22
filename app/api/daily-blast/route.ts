@@ -6,20 +6,13 @@
 // ============================================================
 
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { getAdminClient } from '@/lib/server/auth'
 import { buildDailyScrollEmail } from '@/lib/email/dailyScrollEmail'
 import { generateDailyScrollTemplate, generateDailyScrollAdminCurated } from '@/lib/scrollEngine'
 import type { User, DailyScroll, AdminDailyTheme } from '@/lib/types'
 
-// ─── Supabase admin client (service role — bypasses RLS) ─────
-function getAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY
-  if (!url || !key) throw new Error('Missing Supabase env vars')
-  return createClient(url, key, {
-    auth: { autoRefreshToken: false, persistSession: false }
-  })
-}
+export const dynamic = 'force-dynamic'
+
 
 // ─── Send one email via Resend REST API ───────────────────────
 async function sendScrollEmail(

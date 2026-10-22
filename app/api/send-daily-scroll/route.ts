@@ -16,6 +16,8 @@ import { buildDailyScrollEmail } from '@/lib/email/dailyScrollEmail'
 import { generateDailyScrollTemplate } from '@/lib/scrollEngine'
 import type { User, DailyScroll } from '@/lib/types'
 
+export const dynamic = 'force-dynamic'
+
 const MAX_SENDS_PER_DAY = 5
 
 export async function POST(req: NextRequest) {

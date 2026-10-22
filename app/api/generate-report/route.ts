@@ -12,6 +12,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requirePaidUser, updateServerFields } from '@/lib/server/auth'
 import type { User, FullScrollReport, ThirtyDayEntry } from '@/lib/types'
 
+export const dynamic = 'force-dynamic'
+
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY
 const MAX_PER_DAY = 3
 
@@ -101,15 +103,12 @@ function getPersonalYear(birthDate: string, currentYear: number): number {
 
 // ── Route handler ─────────────────────────────────────────────
 export async function POST(req: NextRequest) {
-  if (!ANTHROPIC_API_KEY) {
-    return NextResponse.json(
-      { error: 'ANTHROPIC_API_KEY not configured in environment variables.' },
-      { status: 500 }
-    )
-  }
-
   const auth = await requirePaidUser(req)
   if (!auth.ok) return auth.response
+
+  if (!ANTHROPIC_API_KEY) {
+    return NextResponse.json({ error: 'AI readings are not configured.' }, { status: 503 })
+  }
 
   const user = auth.profile as User | null
   if (!user?.birthDate || !user?.firstName) {

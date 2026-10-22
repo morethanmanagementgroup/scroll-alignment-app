@@ -11,6 +11,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { getAdminClient, getAuthUser } from '@/lib/server/auth'
 
+export const dynamic = 'force-dynamic'
+
 // Payment status is server-owned: this route (after verifying the
 // Stripe session) is the only place a membership is switched on.
 // If the caller is signed in, the payment is attached to THEIR
