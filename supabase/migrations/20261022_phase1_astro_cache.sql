@@ -28,5 +28,6 @@ create index if not exists astro_natal_cache_created_idx on public.astro_natal_c
 
 alter table public.astro_natal_cache enable row level security;
 -- No policies: anon/authenticated have no access; the service role bypasses RLS.
+revoke truncate on public.astro_natal_cache from anon, authenticated;
 
 commit;

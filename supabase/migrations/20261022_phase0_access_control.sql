@@ -4,7 +4,7 @@
 -- Run supabase/inspect-current-setup.sql first and review it.
 -- This migration is ADDITIVE and preserves all user data:
 --   • no rows are deleted or rewritten
---   • no existing policy is dropped
+--   • the only policy removed is admin_themes "Public read" (unused by the app)
 --   • it can be run more than once safely
 --
 -- What it does
@@ -14,17 +14,12 @@
 --        birthChart, aiReportLog, emailSendLog
 --      and can set referralCode only when none exists yet.
 --      Server routes use the service role and are unaffected.
---   2. Turns on row-level security for user_profiles and admin_themes
---      and adds owner-only policies for user_profiles IF no policy with
---      the same name exists. If RLS is already on with your own
---      policies, those stay as they are.
---   3. Leaves admin_themes with no browser policies: only server
---      routes (service role) read or write it — which is what the app
---      already does.
---
--- If step 3 of the inspection showed a policy that lets anon or
--- authenticated users read OTHER people's profiles (e.g. USING (true)),
--- remove it by hand after review — this migration does not drop policies.
+--   2. Keeps row-level security on user_profiles, adding an owner-only
+--      policy only for a command that has none (your existing policies
+--      already cover select / insert / update, so none are added).
+--   3. Removes admin_themes "Public read": only server routes (service
+--      role) read or write that table.
+--   4. Revokes TRUNCATE from the browser roles.
 -- ============================================================
 
 begin;
@@ -101,34 +96,56 @@ create trigger scroll_protect_profile_fields
   for each row execute function public.scroll_protect_profile_fields();
 
 -- ── 2. Row-level security on user_profiles ───────────────────
+-- Inspected 30 Oct 2026: RLS already on, with owner-only policies
+-- "Users can view/insert/update own profile". A policy is added here
+-- only for a command that has no policy at all, so nothing is duplicated.
 alter table public.user_profiles enable row level security;
 
 do $$
 begin
   if not exists (select 1 from pg_policies where schemaname = 'public'
-                 and tablename = 'user_profiles' and policyname = 'scroll_profiles_select_own') then
+                 and tablename = 'user_profiles' and cmd in ('SELECT', 'ALL')) then
     create policy scroll_profiles_select_own on public.user_profiles
       for select to authenticated using (auth.uid() = id);
   end if;
   if not exists (select 1 from pg_policies where schemaname = 'public'
-                 and tablename = 'user_profiles' and policyname = 'scroll_profiles_insert_own') then
+                 and tablename = 'user_profiles' and cmd in ('INSERT', 'ALL')) then
     create policy scroll_profiles_insert_own on public.user_profiles
       for insert to authenticated with check (auth.uid() = id);
   end if;
   if not exists (select 1 from pg_policies where schemaname = 'public'
-                 and tablename = 'user_profiles' and policyname = 'scroll_profiles_update_own') then
+                 and tablename = 'user_profiles' and cmd in ('UPDATE', 'ALL')) then
     create policy scroll_profiles_update_own on public.user_profiles
       for update to authenticated using (auth.uid() = id) with check (auth.uid() = id);
   end if;
 end $$;
 
 -- ── 3. admin_themes: server-only ─────────────────────────────
+-- Inspected 30 Oct 2026: a "Public read" policy let anyone read every
+-- curated theme, including future dates. The app reads this table only
+-- from server routes (service role), so the policy is removed.
 do $$
 begin
   if exists (select 1 from information_schema.tables
              where table_schema = 'public' and table_name = 'admin_themes') then
     execute 'alter table public.admin_themes enable row level security';
+    if exists (select 1 from pg_policies where schemaname = 'public'
+               and tablename = 'admin_themes' and policyname = 'Public read') then
+      execute 'drop policy "Public read" on public.admin_themes';
+    end if;
   end if;
+end $$;
+
+-- ── 4. Hardening: TRUNCATE ignores row-level security ────────
+-- The browser API cannot issue TRUNCATE, but the grant is unnecessary.
+do $$
+declare t text;
+begin
+  foreach t in array array['user_profiles', 'admin_themes', 'referrals', 'astro_natal_cache'] loop
+    if exists (select 1 from information_schema.tables where table_schema = 'public' and table_name = t) then
+      execute format('revoke truncate on public.%I from anon, authenticated', t);
+    end if;
+  end loop;
 end $$;
 
 commit;
